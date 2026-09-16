@@ -1,0 +1,1 @@
+# Fondacio-activos_inventario
