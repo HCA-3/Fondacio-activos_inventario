@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventario y Hojas de Vida de Hardware | Fundación Fondacio Colombia</title>
+  <meta name="description" content="Sistema de Gestión, Control y Hojas de Vida de Equipos de Cómputo de la Fundación Fondacio Colombia - Sedes YLDC Potosí, Altos del Cabo y personalización completa.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- QRCode.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- SheetJS (XLSX) para exportar inventario en Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Estilos CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- BARRA LATERAL (SIDEBAR) -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo-badge">F</div>
+        <div class="brand-info">
+          <h1>Fondacio</h1>
+          <span>Colombia • Activos</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Principal</div>
+        
+        <a class="nav-item active" data-view="dashboard" id="nav-dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </a>
+
+        <a class="nav-item" data-view="inventario" id="nav-inventario">
+          <i data-lucide="file-spreadsheet"></i>
+          <span>Hojas de Vida Cómputo</span>
+          <span class="nav-badge" id="badge-count-inventory">0</span>
+        </a>
+
+        <a class="nav-item" data-view="sedes" id="nav-sedes">
+          <i data-lucide="map-pin"></i>
+          <span>Sedes y Ubicaciones</span>
+        </a>
+
+        <a class="nav-item" data-view="prestamos" id="nav-prestamos">
+          <i data-lucide="handshake"></i>
+          <span>Préstamos y Actas</span>
+          <span class="nav-badge" id="badge-count-loans">0</span>
+        </a>
+
+        <a class="nav-item" data-view="mantenimiento" id="nav-mantenimiento">
+          <i data-lucide="wrench"></i>
+          <span>Mantenimiento</span>
+          <span class="nav-badge" id="badge-count-maint">0</span>
+        </a>
+
+        <div class="nav-section-title">Personalización & Sistema</div>
+
+        <a class="nav-item" onclick="openCustomizerModal()">
+          <i data-lucide="palette"></i>
+          <span>Personalizar Colores</span>
+        </a>
+
+        <a class="nav-item" data-view="respaldo" id="nav-respaldo">
+          <i data-lucide="database-backup"></i>
+          <span>Respaldos y Datos</span>
+        </a>
+
+        <a class="nav-item" href="https://www.fondaciocolombia.org" target="_blank" rel="noopener noreferrer">
+          <i data-lucide="external-link"></i>
+          <span>Sitio Web Fondacio</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sedes-indicator">
+          <p>Sedes Registradas</p>
+          <div id="sidebar-sedes-pills">
+            <!-- Inyectado dinámicamente -->
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ÁREA PRINCIPAL -->
+    <main class="main-wrapper">
+      
+      <!-- TOPBAR SUPERIOR -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobile-toggle-btn" aria-label="Abrir menú">
+            <i data-lucide="menu"></i>
+          </button>
+          <div class="page-title-area">
+            <h2 id="header-title">Panel de Control y Analítica</h2>
+            <p id="header-subtitle">Hojas de vida de equipos de cómputo en sedes Fondacio Colombia</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="search-bar-top">
+            <i data-lucide="search"></i>
+            <input type="text" id="global-search-input" placeholder="Buscar por placa, serial, IP o presiona Ctrl+K..." />
+          </div>
+
+          <button class="icon-button" onclick="openCustomizerModal()" title="Personalizar Paleta de Colores de la Página">
+            <i data-lucide="palette"></i>
+          </button>
+
+          <button class="icon-button theme-toggle" id="theme-toggle-btn" title="Cambiar Tema Claro / Oscuro">
+            <i data-lucide="moon" id="theme-icon"></i>
+          </button>
+
+          <button class="btn btn-primary" onclick="openNewAssetModal()">
+            <i data-lucide="plus-circle"></i>
+            <span>Nueva Hoja de Vida</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENEDOR DINÁMICO DE VISTAS (SPA) -->
+      <div class="content-body">
+        
+        <!-- VISTA 1: DASHBOARD -->
+        <section class="view-section active" id="view-dashboard">
+          
+          <!-- Métricas Superiores -->
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Total Equipos Cómputo</span>
+                <div class="metric-icon-wrap icon-green">
+                  <i data-lucide="boxes"></i>
+                </div>
+              </div>
+              <div class="metric-value" id="dash-total-assets">0</div>
+              <div class="metric-footer">
+                <span class="metric-tag positive">Hojas de Vida</span> Registradas
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Equipos Operativos</span>
+                <div class="metric-icon-wrap icon-blue">
+                  <i data-lucide="check-circle-2"></i>
+                </div>
+              </div>
+              <div class="metric-value" id="dash-operativos-assets">0</div>
+              <div class="metric-footer">
+                En servicio activo y formación
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Préstamos / Custodia</span>
+                <div class="metric-icon-wrap icon-purple">
+                  <i data-lucide="user-check"></i>
+                </div>
+              </div>
+              <div class="metric-value" id="dash-prestados-assets">0</div>
+              <div class="metric-footer">
+                Voluntarios y estudiantes
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">En Mantenimiento</span>
+                <div class="metric-icon-wrap icon-amber">
+                  <i data-lucide="wrench"></i>
+                </div>
+              </div>
+              <div class="metric-value" id="dash-maint-assets">0</div>
+              <div class="metric-footer">
+                Revisiones o upgrades SSD/RAM
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Valor Comercial Estimado</span>
+                <div class="metric-icon-wrap icon-green">
+                  <i data-lucide="dollar-sign"></i>
+                </div>
+              </div>
+              <div class="metric-value" id="dash-total-value" style="font-size: 1.35rem;">$ 0</div>
+              <div class="metric-footer">
+                Patrimonio técnico institucional
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráficos Analíticos -->
+          <div class="charts-grid">
+            <div class="chart-card">
+              <div class="chart-header">
+                <h3>📍 Distribución de Equipos por Sede</h3>
+                <button class="btn btn-sm btn-secondary" onclick="navigateTo('sedes')">Gestionar Sedes</button>
+              </div>
+              <div class="chart-container">
+                <canvas id="chartSedes"></canvas>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-header">
+                <h3>💻 Distribución por Tipo de Computador</h3>
+                <button class="btn btn-sm btn-secondary" onclick="exportInventoryToExcel()">Exportar Excel</button>
+              </div>
+              <div class="chart-container">
+                <canvas id="chartCategories"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sedes y Actividades Recientes -->
+          <div class="dashboard-bottom-grid">
+            <div class="card-panel">
+              <div class="card-panel-header">
+                <h3>🔔 Actividades, Préstamos y Alertas Técnicas</h3>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">En tiempo real</span>
+              </div>
+              <div class="activity-feed" id="dashboard-activities-list">
+                <!-- Inyectado por JS -->
+              </div>
+            </div>
+
+            <div class="card-panel">
+              <div class="card-panel-header">
+                <h3>🏢 Sedes de Fondacio Colombia</h3>
+                <button class="btn btn-sm btn-primary" onclick="openNewSedeModal()">
+                  <i data-lucide="plus"></i> Sede
+                </button>
+              </div>
+              <div class="sede-summary-box" id="dashboard-sedes-list">
+                <!-- Inyectado por JS dinámicamente -->
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- VISTA 2: INVENTARIO DE HARDWARE & HOJAS DE VIDA -->
+        <section class="view-section" id="view-inventario">
+          
+          <!-- Barra de Filtros y Búsqueda -->
+          <div class="toolbar-card">
+            <div class="toolbar-row">
+              <div class="search-input-wrap">
+                <i data-lucide="search"></i>
+                <input type="text" id="inventory-search-input" placeholder="Buscar por placa (FND-POT-001), serial (MXX1420...), CPU, IP, área o custodio..." />
+              </div>
+
+              <div class="filter-group">
+                <select class="select-filter" id="filter-sede">
+                  <!-- Llenado dinámicamente -->
+                </select>
+
+                <select class="select-filter" id="filter-type">
+                  <option value="all">💻 Todos los Tipos</option>
+                  <option value="ALL IN ONE">ALL IN ONE (Todo en Uno)</option>
+                  <option value="PORTÁTIL">PORTÁTIL (Laptop)</option>
+                  <option value="TORRE / ESCRITORIO">TORRE / ESCRITORIO (Desktop)</option>
+                  <option value="SERVIDOR">SERVIDOR</option>
+                  <option value="MINIPC">MINIPC</option>
+                </select>
+
+                <select class="select-filter" id="filter-status">
+                  <option value="all">⚡ Todos los Estados</option>
+                  <option value="operativo">Operativo</option>
+                  <option value="prestado">Prestado / En Custodia</option>
+                  <option value="mantenimiento">En Mantenimiento</option>
+                  <option value="bodega">Disponible en Bodega</option>
+                  <option value="baja">Dado de Baja</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="toolbar-row" style="padding-top: 0.5rem; border-top: 1px solid var(--border-subtle);">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <span class="asset-code-badge" id="filtered-count-badge">0 equipos</span>
+                <span style="font-size: 0.78rem; color: var(--text-secondary);">Hojas de vida de equipos registradas</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div class="view-mode-toggle">
+                  <button class="view-mode-btn active" id="btn-view-table" onclick="setViewMode('table')" title="Vista Tabla">
+                    <i data-lucide="list"></i>
+                  </button>
+                  <button class="view-mode-btn" id="btn-view-grid" onclick="setViewMode('grid')" title="Vista Tarjetas">
+                    <i data-lucide="grid"></i>
+                  </button>
+                </div>
+
+                <button class="btn btn-secondary btn-sm" onclick="exportInventoryToExcel()">
+                  <i data-lucide="file-spreadsheet"></i>
+                  <span>Exportar Excel Completo</span>
+                </button>
+
+                <button class="btn btn-primary btn-sm" onclick="openNewAssetModal()">
+                  <i data-lucide="plus"></i>
+                  <span>Nueva Hoja de Vida</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contenedor Vista Tabla -->
+          <div class="table-responsive" id="inventory-table-container">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Placa / Área</th>
+                  <th>Marca / Modelo / Tipo / Hardware</th>
+                  <th>Configuración Red (Host / IP / MAC)</th>
+                  <th>Sede / Ubicación / Responsable</th>
+                  <th>Estado</th>
+                  <th style="text-align: right;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="inventory-table-body">
+                <!-- Inyectado dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Contenedor Vista Tarjetas (Grid) -->
+          <div class="assets-cards-grid" id="inventory-grid-container" style="display: none;">
+            <!-- Inyectado dinámicamente -->
+          </div>
+
+          <!-- Estado Vacío -->
+          <div class="empty-state" id="inventory-empty-state" style="display: none;">
+            <div class="empty-state-icon">
+              <i data-lucide="inbox"></i>
+            </div>
+            <h3>No se encontraron equipos</h3>
+            <p>No hay hojas de vida que coincidan con los filtros o el texto de búsqueda seleccionado.</p>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('inventory-search-input').value=''; document.getElementById('filter-sede').value='all'; document.getElementById('filter-type').value='all'; document.getElementById('filter-status').value='all'; applyInventoryFilters();">
+              Restablecer Filtros
+            </button>
+          </div>
+
+        </section>
+
+        <!-- VISTA: GESTIÓN DE SEDES Y ESPACIOS -->
+        <section class="view-section" id="view-sedes">
+          <div class="toolbar-card">
+            <div class="toolbar-row">
+              <div>
+                <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">Sedes y Espacios Operativos</h3>
+                <p style="font-size: 0.78rem; color: var(--text-secondary);">Registra nuevas sedes con su dirección física para asociar equipos de cómputo y generar hojas de vida.</p>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="openNewSedeModal()">
+                <i data-lucide="plus-circle"></i>
+                <span>Registrar Nueva Sede</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="assets-cards-grid" id="sedes-cards-container">
+            <!-- Inyectado dinámicamente por js/sedes.js -->
+          </div>
+        </section>
+
+        <!-- VISTA 3: ASIGNACIONES Y PRÉSTAMOS -->
+        <section class="view-section" id="view-prestamos">
+          <div class="toolbar-card">
+            <div class="toolbar-row">
+              <div class="filter-group">
+                <button class="btn btn-sm btn-secondary loan-filter-btn active" data-status="all" onclick="filterLoansByStatus('all')">
+                  Todos los Registros
+                </button>
+                <button class="btn btn-sm btn-secondary loan-filter-btn" data-status="activo" onclick="filterLoansByStatus('activo')">
+                  Préstamos Activos
+                </button>
+                <button class="btn btn-sm btn-secondary loan-filter-btn" data-status="devuelto" onclick="filterLoansByStatus('devuelto')">
+                  Historial Devueltos
+                </button>
+              </div>
+
+              <button class="btn btn-primary btn-sm" onclick="openNewLoanModal()">
+                <i data-lucide="handshake"></i>
+                <span>Nuevo Préstamo</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive" id="loans-table-wrap">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Equipo Asignado</th>
+                  <th>Beneficiario / Custodio</th>
+                  <th>Sede / Proyecto</th>
+                  <th>Fechas (Entrega / Límite)</th>
+                  <th>Estado del Préstamo</th>
+                  <th style="text-align: right;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="loans-table-body">
+                <!-- Inyectado por JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="empty-state" id="loans-empty-state" style="display: none;">
+            <div class="empty-state-icon">
+              <i data-lucide="handshake"></i>
+            </div>
+            <h3>No hay préstamos en esta categoría</h3>
+            <p>Puedes registrar un nuevo préstamo de equipo asignando un custodio o voluntario.</p>
+            <button class="btn btn-primary btn-sm" onclick="openNewLoanModal()">Asignar Préstamo</button>
+          </div>
+        </section>
+
+        <!-- VISTA 4: MANTENIMIENTO TÉCNICO -->
+        <section class="view-section" id="view-mantenimiento">
+          <div class="toolbar-card">
+            <div class="toolbar-row">
+              <div class="filter-group">
+                <button class="btn btn-sm btn-secondary maint-filter-btn active" data-status="all" onclick="filterMaintByStatus('all')">
+                  Todos los Mantenimientos
+                </button>
+                <button class="btn btn-sm btn-secondary maint-filter-btn" data-status="en_progreso" onclick="filterMaintByStatus('en_progreso')">
+                  En Servicio Técnico
+                </button>
+                <button class="btn btn-sm btn-secondary maint-filter-btn" data-status="completado" onclick="filterMaintByStatus('completado')">
+                  Completados
+                </button>
+              </div>
+
+              <button class="btn btn-primary btn-sm" onclick="openNewMaintenanceModal()">
+                <i data-lucide="wrench"></i>
+                <span>Registrar Mantenimiento</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive" id="maint-table-wrap">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Equipo de Hardware</th>
+                  <th>Tipo y Detalle del Trabajo</th>
+                  <th>Técnico / Costo</th>
+                  <th>Fechas / Próxima Revisión</th>
+                  <th>Estado del Servicio</th>
+                  <th style="text-align: right;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="maint-table-body">
+                <!-- Inyectado por JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="empty-state" id="maint-empty-state" style="display: none;">
+            <div class="empty-state-icon">
+              <i data-lucide="wrench"></i>
+            </div>
+            <h3>Sin registros de mantenimiento</h3>
+            <p>Todos los equipos se encuentran en óptimas condiciones o no hay registros pendientes.</p>
+            <button class="btn btn-primary btn-sm" onclick="openNewMaintenanceModal()">Crear Registro</button>
+          </div>
+        </section>
+
+        <!-- VISTA 5: RESPALDO Y CONFIGURACIÓN -->
+        <section class="view-section" id="view-respaldo">
+          <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
+            
+            <div class="card-panel">
+              <div class="card-panel-header">
+                <h3>💾 Copia de Seguridad y Restauración</h3>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+                Descarga una copia completa en archivo JSON de todas las hojas de vida de equipos de cómputo, sedes, préstamos y mantenimientos de Fondacio Colombia.
+              </p>
+
+              <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <button class="btn btn-primary" id="btn-export-json">
+                  <i data-lucide="download"></i>
+                  <span>Descargar Respaldo Completo (JSON)</span>
+                </button>
+
+                <div style="border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+                  <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.4rem;">
+                    Restaurar Respaldo desde archivo:
+                  </label>
+                  <input type="file" id="file-import-json" accept=".json" class="form-control" />
+                </div>
+
+                <div style="border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+                  <button class="btn btn-outline-danger btn-sm" id="btn-reset-data">
+                    <i data-lucide="rotate-ccw"></i>
+                    <span>Restablecer Datos de Demostración Iniciales</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-panel">
+              <div class="card-panel-header">
+                <h3>ℹ️ Información Institucional</h3>
+              </div>
+              <div class="asset-card-specs-list" style="margin: 0; padding: 1rem; font-size: 0.85rem;">
+                <div class="spec-line">
+                  <span>Organización:</span>
+                  <strong>Fundación Fondacio Colombia</strong>
+                </div>
+                <div class="spec-line">
+                  <span>NIT:</span>
+                  <span>900.384.129-5</span>
+                </div>
+                <div class="spec-line">
+                  <span>Sitio Web:</span>
+                  <span>fondaciocolombia.org</span>
+                </div>
+                <div class="spec-line">
+                  <span>Personalización:</span>
+                  <span style="color: var(--primary-600); font-weight: 700;">Paletas y Sedes Dinámicas Activas</span>
+                </div>
+              </div>
+
+              <div style="margin-top: 1.25rem; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
+                <p>
+                  🌱 Este sistema permite registrar cualquier sede u oficina de Fondacio, configurar colores corporativos favoritos y llevar la Hoja de Vida técnica de cada equipo.
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ==================== MODALES ==================== -->
+
+  <!-- MODAL: PERSONALIZADOR DE COLORES Y APARIENCIA -->
+  <div class="modal-overlay" id="modal-customizer">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="palette" style="color: var(--primary-500);"></i>
+          <span>Personalizar Colores de la Página</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-customizer')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1rem;">
+          Selecciona una paleta de colores predefinida o personaliza los tonos de la barra lateral, botones y fondos según tu preferencia. Los cambios se aplican en tiempo real.
+        </p>
+
+        <h4 style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.6rem; color: var(--text-main);">
+          🎨 Paletas de Color Predefinidas:
+        </h4>
+        <div id="preset-swatches-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin-bottom: 1.25rem;">
+          <!-- Inyectado dinámicamente por customizer.js -->
+        </div>
+
+        <h4 style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.6rem; color: var(--text-main); border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+          🎛️ Selectores de Color Personalizados:
+        </h4>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="custom-primary-color">Color Primario (Botones y Acentos)</label>
+            <input type="color" id="custom-primary-color" class="form-control" style="height: 42px; padding: 2px; cursor: pointer;" />
+          </div>
+
+          <div class="form-group">
+            <label for="custom-dark-color">Color Primario Oscuro</label>
+            <input type="color" id="custom-dark-color" class="form-control" style="height: 42px; padding: 2px; cursor: pointer;" />
+          </div>
+
+          <div class="form-group">
+            <label for="custom-sidebar-color">Color de la Barra Lateral</label>
+            <input type="color" id="custom-sidebar-color" class="form-control" style="height: 42px; padding: 2px; cursor: pointer;" />
+          </div>
+
+          <div class="form-group">
+            <label for="custom-appbg-color">Color de Fondo de la App</label>
+            <input type="color" id="custom-appbg-color" class="form-control" style="height: 42px; padding: 2px; cursor: pointer;" />
+          </div>
+
+          <div class="form-group col-span-2">
+            <label for="custom-accent-color">Color de Acento / Notificaciones</label>
+            <input type="color" id="custom-accent-color" class="form-control" style="height: 42px; padding: 2px; cursor: pointer;" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-danger btn-sm" onclick="resetDefaultColors()">
+          <i data-lucide="rotate-ccw"></i> Restablecer Defecto
+        </button>
+        <button type="button" class="btn btn-primary" onclick="saveCustomColors()">
+          <i data-lucide="check"></i> Guardar Colores
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRAR / EDITAR SEDE -->
+  <div class="modal-overlay" id="modal-sede-form">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-sede-title">
+          <i data-lucide="map-pin" style="color: var(--primary-500);"></i>
+          <span>Registrar Nueva Sede / Espacio</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-sede-form')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="form-sede">
+        <div class="modal-body">
+          <input type="hidden" id="sede-id" />
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="sede-name">Nombre Corto de la Sede <span class="required">*</span></label>
+              <input type="text" id="sede-name" class="form-control" placeholder="Ej: YLDC Potosí / Sede Soacha" required />
+            </div>
+
+            <div class="form-group">
+              <label for="sede-code">Código / Prefijo <span class="required">*</span></label>
+              <input type="text" id="sede-code" class="form-control" placeholder="Ej: POT, CABO, SOA, MED" required />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="sede-fullname">Nombre Completo o Institucional</label>
+              <input type="text" id="sede-fullname" class="form-control" placeholder="Ej: Centro de Formación y Liderazgo Juvenil Potosí" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="sede-address">Dirección Física Exacta <span class="required">*</span></label>
+              <input type="text" id="sede-address" class="form-control" placeholder="Ej: Calle 78A Sur No. 38 - 31 / Cra. 9 Este #96-74" required />
+            </div>
+
+            <div class="form-group">
+              <label for="sede-city">Ciudad / Barrio / Localidad <span class="required">*</span></label>
+              <input type="text" id="sede-city" class="form-control" placeholder="Ej: Potosí, Ciudad Bolívar, Bogotá D.C." required />
+            </div>
+
+            <div class="form-group">
+              <label for="sede-color">Color Distintivo de la Sede</label>
+              <input type="color" id="sede-color" class="form-control" value="#2e7d32" style="height: 42px; padding: 2px; cursor: pointer;" />
+            </div>
+
+            <div class="form-group">
+              <label for="sede-phone">Teléfono / Celular</label>
+              <input type="tel" id="sede-phone" class="form-control" placeholder="Ej: +57 320 2383795" />
+            </div>
+
+            <div class="form-group">
+              <label for="sede-email">Correo Electrónico de Contacto</label>
+              <input type="email" id="sede-email" class="form-control" placeholder="Ej: potosi@fondacio-co.org" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="sede-focus">Enfoque / Descripción del Espacio</label>
+              <textarea id="sede-focus" class="form-control" placeholder="Ej: Sala de informática comunitaria, aulas de formación juvenil y oficinas de proyectos..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-sede-form')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i data-lucide="save"></i>
+            <span>Guardar Sede</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRAR / EDITAR HOJA DE VIDA DE EQUIPO DE CÓMPUTO -->
+  <div class="modal-overlay" id="modal-asset-form">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <h3 id="modal-asset-title">
+          <i data-lucide="file-spreadsheet" style="color: var(--primary-500);"></i>
+          <span>Registrar Nueva Hoja de Vida de Equipo</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-asset-form')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="form-asset">
+        <div class="modal-body">
+          <input type="hidden" id="asset-id" />
+
+          <div class="form-grid">
+            
+            <!-- CABECERA: ÁREA Y TIPO -->
+            <div class="form-group">
+              <label for="asset-area">Área / Dependencia <span class="required">*</span></label>
+              <input type="text" id="asset-area" class="form-control" placeholder="Ej: COMERCIAL / FORMACIÓN / ADMINISTRACIÓN" required />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-computer-type">Tipo Computador <span class="required">*</span></label>
+              <select id="asset-computer-type" class="form-control" required>
+                <option value="ALL IN ONE" selected>ALL IN ONE (Todo en Uno)</option>
+                <option value="PORTÁTIL">PORTÁTIL (Laptop)</option>
+                <option value="TORRE / ESCRITORIO">TORRE / ESCRITORIO (Desktop)</option>
+                <option value="SERVIDOR">SERVIDOR</option>
+                <option value="MINIPC">MINIPC</option>
+              </select>
+            </div>
+
+            <!-- 1. DATOS DEL EQUIPO -->
+            <div class="form-section-banner">1. DATOS DEL EQUIPO</div>
+
+            <div class="form-group">
+              <label for="asset-brand">Marca <span class="required">*</span></label>
+              <input type="text" id="asset-brand" class="form-control" placeholder="Ej: HP, Dell, Lenovo, ASUS" required />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-model">Modelo <span class="required">*</span></label>
+              <input type="text" id="asset-model" class="form-control" placeholder="Ej: 120-1026la / OptiPlex 5480" required />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-purchase-date">Fecha de Compra / Ingreso</label>
+              <input type="date" id="asset-purchase-date" class="form-control" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-provider">Proveedor donde se compró / Donante</label>
+              <input type="text" id="asset-provider" class="form-control" placeholder="Ej: Trust 4p / Donación U. Católica" />
+            </div>
+
+            <!-- 2. DETALLE HARDWARE -->
+            <div class="form-section-banner">2. DETALLE HARDWARE</div>
+
+            <div class="form-group">
+              <label for="asset-code">Placa Inventario <span class="required">*</span></label>
+              <input type="text" id="asset-code" class="form-control" placeholder="Ej: FND-POT-001" required />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-serial">SERIAL Computador <span class="required">*</span></label>
+              <input type="text" id="asset-serial" class="form-control" placeholder="Ej: MXX1420HD9" required />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="asset-processor">CPU (Procesador con Frecuencia)</label>
+              <input type="text" id="asset-processor" class="form-control" placeholder="Ej: Intel(R) Core(TM) i3-2100 CPU @ 3.10GHz" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-gpu">TARJETA DE VIDEO</label>
+              <input type="text" id="asset-gpu" class="form-control" placeholder="Ej: Gráficos Intel HD (hasta 785 MB)" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-ram">Memoria RAM</label>
+              <input type="text" id="asset-ram" class="form-control" placeholder="Ej: 4 GB / 8 GB / 16 GB DDR4" />
+            </div>
+
+            <!-- SUBPANEL: DISCO DURO 1 -->
+            <div class="form-subpanel">
+              <div class="form-subpanel-title">💾 Disco Duro 1</div>
+              <div class="form-grid-3">
+                <div class="form-group">
+                  <label>Marca Disco</label>
+                  <input type="text" id="asset-d1-brand" class="form-control" placeholder="Ej: Hitachi, Kingston, WD" />
+                </div>
+                <div class="form-group">
+                  <label>Capacidad</label>
+                  <input type="text" id="asset-d1-cap" class="form-control" placeholder="Ej: 1 TB / 512 GB / 256 GB" />
+                </div>
+                <div class="form-group">
+                  <label>Tecnología</label>
+                  <select id="asset-d1-tech" class="form-control">
+                    <option value="Mecánico (HDD)">Mecánico (HDD)</option>
+                    <option value="SSD SATA">SSD SATA 2.5"</option>
+                    <option value="NVMe SSD M.2">NVMe SSD M.2</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Serial Disco</label>
+                  <input type="text" id="asset-d1-serial" class="form-control" placeholder="Ej: JP1940J82W0XWV" />
+                </div>
+                <div class="form-group col-span-2">
+                  <label>Modelo Disco</label>
+                  <input type="text" id="asset-d1-model" class="form-control" placeholder="Ej: HDS721010CLA632" />
+                </div>
+              </div>
+            </div>
+
+            <!-- SUBPANEL: DISCO DURO 2 -->
+            <div class="form-subpanel">
+              <div class="form-subpanel-title">💾 Disco Duro 2 (Opcional / Secundario)</div>
+              <div class="form-grid-3">
+                <div class="form-group">
+                  <label>Marca Disco</label>
+                  <input type="text" id="asset-d2-brand" class="form-control" placeholder="Ej: Seagate" />
+                </div>
+                <div class="form-group">
+                  <label>Capacidad</label>
+                  <input type="text" id="asset-d2-cap" class="form-control" placeholder="Ej: 1 TB" />
+                </div>
+                <div class="form-group">
+                  <label>Tecnología</label>
+                  <select id="asset-d2-tech" class="form-control">
+                    <option value="">-- Ninguno --</option>
+                    <option value="Mecánico (HDD)">Mecánico (HDD)</option>
+                    <option value="SSD SATA">SSD SATA 2.5"</option>
+                    <option value="NVMe SSD M.2">NVMe SSD M.2</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Serial Disco 2</label>
+                  <input type="text" id="asset-d2-serial" class="form-control" placeholder="Serial" />
+                </div>
+                <div class="form-group col-span-2">
+                  <label>Modelo Disco 2</label>
+                  <input type="text" id="asset-d2-model" class="form-control" placeholder="Modelo" />
+                </div>
+              </div>
+            </div>
+
+            <!-- PERIFÉRICOS -->
+            <div class="form-group">
+              <label for="asset-monitor-model">Marca y/o modelo Monitor</label>
+              <input type="text" id="asset-monitor-model" class="form-control" placeholder="Ej: HP Omni / Pro, 19.9 o Integrado" />
+            </div>
+            <div class="form-group">
+              <label for="asset-monitor-plate">Placa Monitor</label>
+              <input type="text" id="asset-monitor-plate" class="form-control" placeholder="Ej: MON-HP-001 o N/A" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-keyboard-model">Marca y/o modelo Teclado</label>
+              <input type="text" id="asset-keyboard-model" class="form-control" placeholder="Ej: HP USB Standard" />
+            </div>
+            <div class="form-group">
+              <label for="asset-keyboard-plate">Placa Teclado</label>
+              <input type="text" id="asset-keyboard-plate" class="form-control" placeholder="Placa Teclado (si tiene)" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-mouse-model">Marca y/o modelo Mouse</label>
+              <input type="text" id="asset-mouse-model" class="form-control" placeholder="Ej: HP Óptico USB" />
+            </div>
+            <div class="form-group">
+              <label for="asset-mouse-plate">Placa Mouse</label>
+              <input type="text" id="asset-mouse-plate" class="form-control" placeholder="Placa Mouse (si tiene)" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="asset-other-peripherals">Otro / Accesorios vinculados</label>
+              <input type="text" id="asset-other-peripherals" class="form-control" placeholder="Ej: Cargador Original HP 65W, Diadema, Estuche" />
+            </div>
+
+            <!-- 3. CONFIGURACION DE RED -->
+            <div class="form-section-banner">3. CONFIGURACIÓN DE RED</div>
+
+            <div class="form-group">
+              <label for="asset-net-in-use">Red en Uso</label>
+              <select id="asset-net-in-use" class="form-control">
+                <option value="CABLE" selected>CABLE (Ethernet RJ45)</option>
+                <option value="WIFI">WIFI (Inalámbrica)</option>
+                <option value="AMBOS (Cable / WiFi)">AMBOS (Cable / WiFi)</option>
+                <option value="SIN RED">SIN RED</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="asset-net-hostname">Nombre en la Red (Hostname / Equipo)</label>
+              <input type="text" id="asset-net-hostname" class="form-control" placeholder="Ej: Asistente / FND-POT-01" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-ip">Dirección IP</label>
+              <input type="text" id="asset-ip" class="form-control" placeholder="Ej: 192.168.1.122 (o DHCP)" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-mac">Dirección MAC</label>
+              <input type="text" id="asset-mac" class="form-control" placeholder="Ej: EE:9A:8F:D5:DD:58" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-net-card">Marca / Adaptador Tarjeta de Red</label>
+              <input type="text" id="asset-net-card" class="form-control" placeholder="Ej: Realtek PCIe GbE / Intel Wi-Fi" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-net-speed">Velocidad de Red</label>
+              <input type="text" id="asset-net-speed" class="form-control" placeholder="Ej: 1 Gbps / 100 Mbps" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="asset-domain">Dominio / Grupo de Trabajo</label>
+              <input type="text" id="asset-domain" class="form-control" placeholder="Ej: DS.PUBLICIDAD / WORKGROUP / FONDACIO" />
+            </div>
+
+            <!-- 4. SISTEMA OPERATIVO INSTALADO -->
+            <div class="form-section-banner">4. SISTEMA OPERATIVO INSTALADO</div>
+
+            <div class="form-group col-span-2">
+              <label for="asset-os">Sistema Operativo y Edición Completa</label>
+              <input type="text" id="asset-os" class="form-control" placeholder="Ej: Microsoft Windows 10 Education 32-Bit / Windows 11 Pro 64-Bit / Ubuntu 22.04" />
+            </div>
+
+            <!-- 5. INVENTARIO COMPUTADOR (Auditoría) -->
+            <div class="form-section-banner">5. INVENTARIO COMPUTADOR (AUDITORÍA)</div>
+
+            <div class="form-group">
+              <label for="asset-inv-date">Fecha de Inventario / Levantamiento</label>
+              <input type="date" id="asset-inv-date" class="form-control" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-inventoried-by">Empresa, persona que realizó el inventario</label>
+              <input type="text" id="asset-inventoried-by" class="form-control" placeholder="Ej: Trust 4p, Nicolás Espitia" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="asset-inv-observations">Observaciones del Levantamiento</label>
+              <textarea id="asset-inv-observations" class="form-control" placeholder="Ej: Se hace el inventario lógico con el programa WinAudit, se adjunta en la entrega del inventario..."></textarea>
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="asset-approved-by">Aceptación Empresa / Aprobador (Nombre y Cargo)</label>
+              <input type="text" id="asset-approved-by" class="form-control" placeholder="Ej: Nicolás Espitia / Coordinación TIC Fondacio" />
+            </div>
+
+            <!-- 6. UBICACIÓN ACTUAL -->
+            <div class="form-section-banner">6. UBICACIÓN ACTUAL</div>
+
+            <div class="form-group">
+              <label for="asset-assigned-to">Usuario Responsable / Cargo</label>
+              <input type="text" id="asset-assigned-to" class="form-control" placeholder="Ej: Auxiliar / Docente de Robótica" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-assigned-role">Rol Institucional</label>
+              <input type="text" id="asset-assigned-role" class="form-control" placeholder="Ej: Personal / Voluntario / Estudiante" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-sede">Sede Institucional <span class="required">*</span></label>
+              <select id="asset-sede" class="form-control" required>
+                <!-- Llenado dinámicamente -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="asset-location">Ubicación / Sala Específica</label>
+              <input type="text" id="asset-location" class="form-control" placeholder="Ej: Sala de Sistemas 1 / Oficina de Proyectos" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-address">Dirección de Ubicación Física</label>
+              <input type="text" id="asset-address" class="form-control" placeholder="Ej: Calle 78A Sur #38-31 / Cra. 9 Este #96-74" />
+            </div>
+
+            <div class="form-group">
+              <label for="asset-assign-date">Fecha de Asignación</label>
+              <input type="date" id="asset-assign-date" class="form-control" />
+            </div>
+
+            <!-- 7. RECOMENDACIONES Y/O OBSERVACIONES -->
+            <div class="form-section-banner">7. RECOMENDACIONES Y/O OBSERVACIONES</div>
+
+            <div class="form-group col-span-2">
+              <label for="asset-recommendations">Recomendaciones y/o Observaciones Técnicas</label>
+              <textarea id="asset-recommendations" class="form-control" placeholder="Ej: Cambiar el sistema operativo a Windows 10 Pro 64 bits / Realizar mantenimiento preventivo semestral"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="asset-status">Estado Operativo</label>
+              <select id="asset-status" class="form-control">
+                <option value="operativo" selected>Operativo (En uso)</option>
+                <option value="bodega">Disponible en Bodega</option>
+                <option value="prestado">Prestado / En Custodia</option>
+                <option value="mantenimiento">En Mantenimiento</option>
+                <option value="baja">Dado de Baja</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="asset-condition">Estado Físico</label>
+              <select id="asset-condition" class="form-control">
+                <option value="Excelente">Excelente</option>
+                <option value="Bueno" selected>Bueno</option>
+                <option value="Regular">Regular</option>
+                <option value="Dañado">Dañado</option>
+              </select>
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="asset-value">Valor Comercial Estimado (COP)</label>
+              <input type="number" id="asset-value" class="form-control" placeholder="Ej: 1500000" min="0" step="50000" />
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-asset-form')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i data-lucide="save"></i>
+            <span>Guardar Hoja de Vida</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VISTA OFICIAL DE LA HOJA DE VIDA DE EQUIPO (ESTILO EXCEL / IMPRESIÓN) -->
+  <div class="modal-overlay" id="modal-hoja-vida">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="file-spreadsheet" style="color: var(--primary-500);"></i>
+          <span>Hoja de Vida de Equipo de Cómputo</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-hoja-vida')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" id="hoja-de-vida-content">
+        <!-- Inyectado dinámicamente con la tabla de Hoja de Vida -->
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-hdv-tag">
+          <i data-lucide="qr-code"></i> Etiqueta QR
+        </button>
+        <button class="btn btn-secondary" id="btn-hdv-edit">
+          <i data-lucide="edit"></i> Editar Datos
+        </button>
+        <button class="btn btn-primary" onclick="window.print()">
+          <i data-lucide="printer"></i>
+          <span>Imprimir Hoja de Vida</span>
+        </button>
+        <button class="btn btn-secondary" onclick="closeModal('modal-hoja-vida')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GENERADOR Y VISTA DE ETIQUETA QR -->
+  <div class="modal-overlay" id="modal-qr-tag">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="qr-code" style="color: var(--primary-500);"></i>
+          <span>Etiqueta de Activo con Código QR</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-qr-tag')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="qr-tag-preview-container printable-area">
+          <div class="qr-asset-label">
+            <div class="qr-label-header">
+              <h4>FONDACIO COLOMBIA</h4>
+              <p>Control de Inventario de Hardware</p>
+            </div>
+            
+            <div class="qr-canvas-holder" id="qr-canvas-target">
+              <!-- Canvas QR generado aquí -->
+            </div>
+
+            <div class="qr-label-code" id="qr-label-code-text">FND-POT-001</div>
+            <div class="qr-label-info" id="qr-label-name-text">HP 120-1026la</div>
+            <div class="qr-label-info" id="qr-label-sede-text">YLDC Potosí • Sala de Cómputo</div>
+            <div class="qr-label-info" id="qr-label-serial-text" style="font-size: 0.68rem; color: #64748b;">Serial: MXX1420HD9</div>
+          </div>
+        </div>
+
+        <p style="font-size: 0.78rem; color: var(--text-secondary); text-align: center; margin-top: 1rem;">
+          💡 Esta etiqueta está optimizada para imprimir en papel adhesivo y pegarla directamente en la carcasa del computador.
+        </p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-qr-tag')">Cerrar</button>
+        <button class="btn btn-primary" onclick="printCurrentQRTag()">
+          <i data-lucide="printer"></i>
+          <span>Imprimir Etiqueta</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NUEVO PRÉSTAMO / ASIGNACIÓN -->
+  <div class="modal-overlay" id="modal-loan-form">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="handshake" style="color: var(--primary-500);"></i>
+          <span>Registrar Préstamo de Equipo</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-loan-form')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="form-loan">
+        <div class="modal-body">
+          <div class="form-grid">
+            
+            <div class="form-group col-span-2">
+              <label for="loan-asset-id">Seleccionar Equipo de Hardware <span class="required">*</span></label>
+              <select id="loan-asset-id" class="form-control" required>
+                <!-- Llenado dinámicamente -->
+              </select>
+              <div id="loan-asset-info-preview" style="font-size: 0.75rem; color: var(--primary-600); margin-top: 0.25rem;"></div>
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="loan-borrower-name">Nombre Completo del Custodio / Receptor <span class="required">*</span></label>
+              <input type="text" id="loan-borrower-name" class="form-control" placeholder="Ej: Laura Vanessa Gómez" required />
+            </div>
+
+            <div class="form-group">
+              <label for="loan-borrower-id">Cédula / Documento de Identidad</label>
+              <input type="text" id="loan-borrower-id" class="form-control" placeholder="Ej: 1.020.893.412" />
+            </div>
+
+            <div class="form-group">
+              <label for="loan-borrower-role">Rol / Vinculación</label>
+              <input type="text" id="loan-borrower-role" class="form-control" placeholder="Ej: Voluntaria / Estudiante / Docente" />
+            </div>
+
+            <div class="form-group">
+              <label for="loan-borrower-phone">Teléfono / WhatsApp</label>
+              <input type="tel" id="loan-borrower-phone" class="form-control" placeholder="+57 312 4567890" />
+            </div>
+
+            <div class="form-group">
+              <label for="loan-borrower-email">Correo Electrónico</label>
+              <input type="email" id="loan-borrower-email" class="form-control" placeholder="usuario@fondacio-co.org" />
+            </div>
+
+            <div class="form-group">
+              <label for="loan-sede">Sede Responsable</label>
+              <select id="loan-sede" class="form-control">
+                <!-- Llenado dinámicamente -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="loan-date">Fecha de Entrega <span class="required">*</span></label>
+              <input type="date" id="loan-date" class="form-control" required />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="loan-expected-date">Fecha Límite Estimada de Devolución</label>
+              <input type="date" id="loan-expected-date" class="form-control" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="loan-purpose">Motivo / Proyecto de Asignación</label>
+              <input type="text" id="loan-purpose" class="form-control" placeholder="Ej: Talleres de Robótica Potosí / Diplomado de Liderazgo" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="loan-condition-note">Estado Físico y Accesorios Entregados</label>
+              <textarea id="loan-condition-note" class="form-control" placeholder="Ej: Equipo probado 100% funcional. Incluye cargador de 65W y estuche."></textarea>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-loan-form')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i data-lucide="check"></i>
+            <span>Confirmar Préstamo</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VISTA DE ACTA DE ENTREGA PARA IMPRIMIR -->
+  <div class="modal-overlay" id="modal-acta-view">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="file-check" style="color: var(--primary-500);"></i>
+          <span>Acta Oficial de Entrega de Equipo</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-acta-view')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body printable-area" id="acta-document-container">
+        <!-- Inyectado por JS -->
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-acta-view')">Cerrar</button>
+        <button class="btn btn-primary" onclick="window.print()">
+          <i data-lucide="printer"></i>
+          <span>Imprimir Acta Oficial</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRAR MANTENIMIENTO -->
+  <div class="modal-overlay" id="modal-maintenance-form">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="wrench" style="color: var(--primary-500);"></i>
+          <span>Registrar Mantenimiento de Hardware</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-maintenance-form')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="form-maintenance">
+        <div class="modal-body">
+          <div class="form-grid">
+            
+            <div class="form-group col-span-2">
+              <label for="maint-asset-id">Equipo de Hardware <span class="required">*</span></label>
+              <select id="maint-asset-id" class="form-control" required>
+                <!-- Llenado dinámicamente -->
+              </select>
+              <div id="maint-asset-info-preview" style="font-size: 0.75rem; color: var(--primary-600); margin-top: 0.25rem;"></div>
+            </div>
+
+            <div class="form-group">
+              <label for="maint-type">Tipo de Servicio <span class="required">*</span></label>
+              <select id="maint-type" class="form-control" required>
+                <option value="preventivo">Mantenimiento Preventivo (Limpieza/Pasta)</option>
+                <option value="correctivo">Mantenimiento Correctivo (Reparación)</option>
+                <option value="upgrade">Mejora de Hardware (Upgrade RAM/SSD)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="maint-status">Estado del Servicio</label>
+              <select id="maint-status" class="form-control">
+                <option value="en_progreso">En Progreso / En Taller</option>
+                <option value="programado">Programado</option>
+                <option value="completado">Completado</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="maint-date">Fecha de Servicio <span class="required">*</span></label>
+              <input type="date" id="maint-date" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+              <label for="maint-cost">Costo del Servicio (COP)</label>
+              <input type="number" id="maint-cost" class="form-control" placeholder="0" min="0" step="5000" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="maint-technician">Técnico / Responsable del Soporte</label>
+              <input type="text" id="maint-technician" class="form-control" placeholder="Ej: Ing. Carlos Mendoza / Voluntariado U. Católica" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="maint-description">Descripción de las tareas a realizar / Diagnóstico <span class="required">*</span></label>
+              <textarea id="maint-description" class="form-control" placeholder="Ej: Limpieza interna, cambio de pasta térmica, instalación de SSD 480GB..." required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="maint-parts">Repuestos / Componentes Cambiados</label>
+              <input type="text" id="maint-parts" class="form-control" placeholder="Ej: SSD Kingston 480GB / Pasta Térmica" />
+            </div>
+
+            <div class="form-group">
+              <label for="maint-next-date">Fecha Próximo Mantenimiento Sugerido</label>
+              <input type="date" id="maint-next-date" class="form-control" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="maint-notes">Notas u Observaciones Finales</label>
+              <textarea id="maint-notes" class="form-control" placeholder="Observaciones de rendimiento tras el servicio..."></textarea>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-maintenance-form')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i data-lucide="save"></i>
+            <span>Guardar Mantenimiento</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR DE TOAST NOTIFICATIONS -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts de la Aplicación -->
+  <script src="js/data.js"></script>
+  <script src="js/customizer.js"></script>
+  <script src="js/sedes.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/loans.js"></script>
+  <script src="js/maintenance.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
