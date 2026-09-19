@@ -20,6 +20,7 @@ function initApp() {
   initInventoryModule();
   initLoansModule();
   initMaintenanceModule();
+  initDiagnosticoModule();
   initBackupModule();
 
   // Cargar vista inicial
@@ -118,6 +119,7 @@ function navigateTo(viewId) {
     sedes: { title: 'Gestión de Sedes y Espacios Físicos', sub: 'Administración de sedes operativas, direcciones y contactos' },
     prestamos: { title: 'Asignaciones y Préstamos', sub: 'Control de custodios, beneficiarios y actas de entrega' },
     mantenimiento: { title: 'Mantenimientos y Soporte Técnico', sub: 'Bitácora técnica, servicios preventivos y correctivos' },
+    diagnostico: { title: 'Diagnóstico de Software, Licencias y Tablets', sub: 'Auditoría de sistemas operativos, activación, parches y mitigación de obsolescencia' },
     respaldo: { title: 'Respaldos y Configuración', sub: 'Copia de seguridad, exportación y restauración de datos' }
   };
 
@@ -136,6 +138,8 @@ function navigateTo(viewId) {
     renderLoansList();
   } else if (viewId === 'mantenimiento') {
     renderMaintenanceList();
+  } else if (viewId === 'diagnostico') {
+    renderDiagnosticoView();
   }
 
   if (window.lucide) {

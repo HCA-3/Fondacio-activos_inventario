@@ -19,7 +19,7 @@ function initMaintenanceModule() {
       if (asset && preview) {
         preview.innerHTML = `
           <strong>${escapeHtml(asset.brand)} ${escapeHtml(asset.model)}</strong> (${escapeHtml(asset.code)})
-          <br><small>Sede: ${escapeHtml(asset.sede)} • Estado actual: ${escapeHtml(asset.status)}</small>
+          <br><small>Sede: ${escapeHtml(asset.sede)} • Estado actual: ${escapeHtml(asset.status)} • S.O.: ${escapeHtml(asset.os || '')}</small>
         `;
       } else if (preview) {
         preview.innerHTML = '';
@@ -58,7 +58,7 @@ function renderMaintenanceList() {
     if (item.status === 'completado') {
       statusPill = `<span class="status-pill status-operativo">Completado (${item.completionDate || 'Listo'})</span>`;
     } else if (item.status === 'en_progreso') {
-      statusPill = `<span class="status-pill status-mantenimiento">En Servicio</span>`;
+      statusPill = `<span class="status-pill status-mantenimiento">En Servicio / Taller</span>`;
     } else {
       statusPill = `<span class="status-pill status-prestado">Programado (${item.scheduledDate || 'Pendiente'})</span>`;
     }
@@ -66,23 +66,28 @@ function renderMaintenanceList() {
     const typeBadge = item.type === 'preventivo' 
       ? '<span class="status-pill status-operativo" style="font-size: 0.7rem;">Preventivo</span>'
       : item.type === 'correctivo'
-      ? '<span class="status-pill status-mantenimiento" style="font-size: 0.7rem;">Correctivo</span>'
-      : '<span class="status-pill status-bodega" style="font-size: 0.7rem;">Mejora / Upgrade</span>';
+      ? '<span class="status-pill status-baja" style="font-size: 0.7rem;">Correctivo Urgente</span>'
+      : '<span class="status-pill status-prestado" style="font-size: 0.7rem;">Adecuación / Upgrade</span>';
 
     return `
       <tr>
         <td>
           <span class="asset-code-badge">${item.assetCode}</span>
-          <div style="font-weight: 600; font-size: 0.82rem; margin-top: 0.2rem;">${escapeHtml(item.assetName)}</div>
+          <div style="font-weight: 700; font-size: 0.82rem; margin-top: 0.2rem;">${escapeHtml(item.assetName)}</div>
         </td>
         <td>
           ${typeBadge}
-          <div style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 0.2rem;">
+          <div style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 0.25rem; line-height: 1.4;">
             ${escapeHtml(item.description || '')}
           </div>
+          ${item.replacedParts ? `
+            <div style="font-size: 0.7rem; color: var(--primary-600); margin-top: 0.2rem;">
+              <strong>Componentes:</strong> ${escapeHtml(item.replacedParts)}
+            </div>
+          ` : ''}
         </td>
         <td>
-          <div style="font-weight: 500; font-size: 0.8rem;">${escapeHtml(item.technician || 'Soporte')}</div>
+          <div style="font-weight: 500; font-size: 0.8rem;">${escapeHtml(item.technician || 'Soporte TIC')}</div>
           <div style="font-size: 0.72rem; color: var(--text-muted);">
             Costo: ${formatCurrency(item.cost || 0)}
           </div>
@@ -129,7 +134,7 @@ function openNewMaintenanceModal() {
   selectAsset.innerHTML = '<option value="">-- Selecciona el equipo para mantenimiento --</option>' +
     allAssets.map(a => `
       <option value="${a.id}">
-        [${a.code}] ${a.name} (${a.sede} - ${a.status})
+        [${a.code}] ${a.brand} ${a.model} (${a.sede} - ${a.status})
       </option>
     `).join('');
 
@@ -154,7 +159,7 @@ function handleSaveMaintenanceForm(e) {
   const maintData = {
     assetId: asset.id,
     assetCode: asset.code,
-    assetName: asset.name,
+    assetName: `${asset.brand} ${asset.model} (${asset.networkHostname || asset.code})`,
     type: document.getElementById('maint-type').value,
     status: document.getElementById('maint-status').value,
     requestDate: new Date().toISOString().split('T')[0],

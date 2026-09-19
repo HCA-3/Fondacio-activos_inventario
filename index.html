@@ -72,6 +72,11 @@
           <span class="nav-badge" id="badge-count-maint">0</span>
         </a>
 
+        <a class="nav-item" data-view="diagnostico" id="nav-diagnostico">
+          <i data-lucide="shield-check"></i>
+          <span>Diagnóstico & Licencias</span>
+        </a>
+
         <div class="nav-section-title">Personalización & Sistema</div>
 
         <a class="nav-item" onclick="openCustomizerModal()">
@@ -278,8 +283,9 @@
 
                 <select class="select-filter" id="filter-type">
                   <option value="all">💻 Todos los Tipos</option>
-                  <option value="ALL IN ONE">ALL IN ONE (Todo en Uno)</option>
                   <option value="PORTÁTIL">PORTÁTIL (Laptop)</option>
+                  <option value="TABLET">📱 TABLET (Dispositivo Móvil)</option>
+                  <option value="ALL IN ONE">ALL IN ONE (Todo en Uno)</option>
                   <option value="TORRE / ESCRITORIO">TORRE / ESCRITORIO (Desktop)</option>
                   <option value="SERVIDOR">SERVIDOR</option>
                   <option value="MINIPC">MINIPC</option>
@@ -552,6 +558,11 @@
           </div>
         </section>
 
+        <!-- VISTA 6: DIAGNÓSTICO DE SOFTWARE Y ADECUACIÓN TECNOLÓGICA -->
+        <section class="view-section" id="view-diagnostico">
+          <!-- Inyectado dinámicamente por js/diagnostico.js -->
+        </section>
+
       </div>
     </main>
 
@@ -730,8 +741,9 @@
             <div class="form-group">
               <label for="asset-computer-type">Tipo Computador <span class="required">*</span></label>
               <select id="asset-computer-type" class="form-control" required>
-                <option value="ALL IN ONE" selected>ALL IN ONE (Todo en Uno)</option>
-                <option value="PORTÁTIL">PORTÁTIL (Laptop)</option>
+                <option value="PORTÁTIL" selected>PORTÁTIL (Laptop)</option>
+                <option value="TABLET">TABLET (Dispositivo Móvil)</option>
+                <option value="ALL IN ONE">ALL IN ONE (Todo en Uno)</option>
                 <option value="TORRE / ESCRITORIO">TORRE / ESCRITORIO (Desktop)</option>
                 <option value="SERVIDOR">SERVIDOR</option>
                 <option value="MINIPC">MINIPC</option>
@@ -1343,6 +1355,7 @@
   <script src="js/inventory.js"></script>
   <script src="js/loans.js"></script>
   <script src="js/maintenance.js"></script>
+  <script src="js/diagnostico.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

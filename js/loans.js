@@ -129,7 +129,7 @@ function openNewLoanModal() {
   selectAsset.innerHTML = '<option value="">-- Selecciona un equipo de hardware disponible --</option>' +
     availableAssets.map(a => `
       <option value="${a.id}">
-        [${a.code}] ${a.name} (${a.sede} - ${a.status === 'bodega' ? 'En Bodega' : 'Operativo'})
+        [${a.code}] ${a.brand} ${a.model} (${a.sede} - ${a.status === 'bodega' ? 'En Bodega' : 'Operativo'})
       </option>
     `).join('');
 
@@ -154,7 +154,7 @@ function handleSaveLoanForm(e) {
   const loanData = {
     assetId: asset.id,
     assetCode: asset.code,
-    assetName: asset.name,
+    assetName: `${asset.brand} ${asset.model} (${asset.networkHostname || asset.code})`,
     borrowerName: document.getElementById('loan-borrower-name').value.trim(),
     borrowerId: document.getElementById('loan-borrower-id').value.trim(),
     borrowerRole: document.getElementById('loan-borrower-role').value.trim(),
