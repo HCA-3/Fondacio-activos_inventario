@@ -964,12 +964,13 @@ body {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 1.25rem;
+  padding: 0;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   transition: all var(--transition-fast);
   position: relative;
+  overflow: hidden;
 }
 
 .asset-card:hover {
@@ -978,11 +979,71 @@ body {
   border-color: var(--primary-300);
 }
 
+.asset-card-img-wrap {
+  width: 100%;
+  height: 165px;
+  position: relative;
+  background: #0f172a;
+  overflow: hidden;
+}
+
+.asset-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-normal);
+}
+
+.asset-card:hover .asset-card-img {
+  transform: scale(1.05);
+}
+
+.asset-price-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #4ade80;
+  font-family: 'SF Mono', monospace;
+  font-weight: 800;
+  font-size: 0.76rem;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.asset-card-body {
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 .asset-card-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.asset-table-thumb {
+  width: 52px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  border: 1px solid var(--border-subtle);
+  background: #0f172a;
+  flex-shrink: 0;
+}
+
+.asset-table-item-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .asset-category-icon {

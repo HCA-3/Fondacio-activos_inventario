@@ -1,10 +1,10 @@
 /**
  * FONDACIO COLOMBIA - SISTEMA DE GESTIÓN DE ACTIVOS DE HARDWARE
  * Capa de Datos, Persistencia LocalStorage, Gestión Dinámica de Sedes y Equipos Reales
- * Actualizado con el Censo Técnico Oficial e Inventario de Equipos (Septiembre 2026)
+ * Actualizado con el Censo Técnico Oficial e Imágenes de Hardware (Septiembre 2026)
  */
 
-const STORAGE_KEY = 'fondacio_inventory_v5_db';
+const STORAGE_KEY = 'fondacio_inventory_v6_db';
 
 // Sedes oficiales de Fondacio Colombia
 const DEFAULT_SEDES = [
@@ -67,7 +67,7 @@ const INITIAL_SEED_DATA = {
   themeConfig: DEFAULT_THEME_CONFIG,
   assets: [
     // ==========================================
-    // EQUIPO PC-01 (REAL - INVENTARIO OFICIAL)
+    // EQUIPO PC-01 (DELL LATITUDE 7480)
     // ==========================================
     {
       id: 'ast-real-pc01',
@@ -79,6 +79,7 @@ const INITIAL_SEED_DATA = {
       model: 'Latitude 7480',
       purchaseDate: '2023-01-15',
       provider: 'Donación Institucional Fondacio',
+      image: 'img/dell_latitude_7480.jpg',
       
       // Hardware
       serial: '00330-80000-00000-AA332',
@@ -174,7 +175,7 @@ const INITIAL_SEED_DATA = {
     },
 
     // ==========================================
-    // EQUIPO PC-02 (REAL - REQUIERE CORRECTIVO)
+    // EQUIPO PC-02 (DELL LATITUDE 7480 - CORRECTIVO)
     // ==========================================
     {
       id: 'ast-real-pc02',
@@ -186,6 +187,7 @@ const INITIAL_SEED_DATA = {
       model: 'Latitude 7480',
       purchaseDate: '2023-01-15',
       provider: 'Donación Institucional Fondacio',
+      image: 'img/dell_latitude_7480.jpg',
       
       // Hardware
       serial: '00331-10000-00001-AA543',
@@ -281,7 +283,7 @@ const INITIAL_SEED_DATA = {
     },
 
     // ==========================================
-    // EQUIPO PC-03 (REAL - DELL LATITUDE 5490)
+    // EQUIPO PC-03 (DELL LATITUDE 5490)
     // ==========================================
     {
       id: 'ast-real-pc03',
@@ -293,6 +295,7 @@ const INITIAL_SEED_DATA = {
       model: 'Latitude 5490',
       purchaseDate: '2024-02-20',
       provider: 'Donación Institucional Fondacio',
+      image: 'img/dell_latitude_5490.jpg',
       
       // Hardware
       serial: '00330-51787-98301-AAOEM',
@@ -388,7 +391,7 @@ const INITIAL_SEED_DATA = {
     },
 
     // ==========================================
-    // EQUIPO PC-04 (REAL - ASUS VIVOBOOK ALTO RENDIMIENTO)
+    // EQUIPO PC-04 (ASUS VIVOBOOK X1504ZA)
     // ==========================================
     {
       id: 'ast-real-pc04',
@@ -400,6 +403,7 @@ const INITIAL_SEED_DATA = {
       model: 'Vivobook X1504ZA',
       purchaseDate: '2025-09-16',
       provider: 'Adquisición Institucional Fondacio',
+      image: 'img/asus_vivobook_15.jpg',
       
       // Hardware
       serial: '00327-60000-00000-AA118',
@@ -496,18 +500,18 @@ const INITIAL_SEED_DATA = {
 
     // ==========================================
     // DISPOSITIVOS MÓVILES (5 TABLETS REALES)
-    // ADECUACIÓN Y MITIGACIÓN DE OBSOLESCENCIA
     // ==========================================
     {
       id: 'ast-real-tab01',
       code: 'TAB-01',
       area: 'AULA TIC / LECTURA COMUNITARIA',
-      computerType: 'MINIPC', // Tablet
+      computerType: 'TABLET',
       category: 'tablet',
       brand: 'Genérica / Institucional',
       model: "Tablet 7''-10'' (Tablet Fondacio 01)",
       purchaseDate: '2022-05-10',
       provider: 'Donación Proyecto Educativo Fondacio',
+      image: 'img/tablet_educativa_android.jpg',
       
       serial: 'TAB-AND5-01-FND',
       processor: 'Quad-Core ARM Cortex @ 1.30 GHz',
@@ -554,7 +558,7 @@ const INITIAL_SEED_DATA = {
       
       inventoryDate: '2026-09-14',
       inventoriedBy: 'Equipo de Inventario TIC Fondacio',
-      inventoryObservations: 'Censo de 5 tablets para talleres comunitarios. Estrategia de mitigación de obsolescencia aplicada: evasión de Google Play mediante accesos web directos a Google Workspace con cuenta institucional.',
+      inventoryObservations: 'Censo de 5 tablets para talleres comunitarios. Estrategia de mitigación de obsolescencia aplicada.',
       approvedBy: 'Coordinación Pedagógica Fondacio',
       
       sede: 'Altos del Cabo',
@@ -574,12 +578,13 @@ const INITIAL_SEED_DATA = {
       id: 'ast-real-tab02',
       code: 'TAB-02',
       area: 'AULA TIC / LECTURA COMUNITARIA',
-      computerType: 'MINIPC',
+      computerType: 'TABLET',
       category: 'tablet',
       brand: 'Genérica / Institucional',
       model: "Tablet 7''-10'' (Tablet Fondacio 02)",
       purchaseDate: '2022-05-10',
       provider: 'Donación Proyecto Educativo Fondacio',
+      image: 'img/tablet_educativa_android.jpg',
       
       serial: 'TAB-AND5-02-FND',
       processor: 'Quad-Core ARM Cortex @ 1.30 GHz',
@@ -646,12 +651,13 @@ const INITIAL_SEED_DATA = {
       id: 'ast-real-tab03',
       code: 'TAB-03',
       area: 'AULA TIC / LECTURA COMUNITARIA',
-      computerType: 'MINIPC',
+      computerType: 'TABLET',
       category: 'tablet',
       brand: 'Genérica / Institucional',
       model: "Tablet 7''-10'' (Tablet Fondacio 03)",
       purchaseDate: '2022-05-10',
       provider: 'Donación Proyecto Educativo Fondacio',
+      image: 'img/tablet_educativa_android.jpg',
       
       serial: 'TAB-AND5-03-FND',
       processor: 'Quad-Core ARM Cortex @ 1.30 GHz',
@@ -718,12 +724,13 @@ const INITIAL_SEED_DATA = {
       id: 'ast-real-tab04',
       code: 'TAB-04',
       area: 'AULA TIC / LECTURA COMUNITARIA',
-      computerType: 'MINIPC',
+      computerType: 'TABLET',
       category: 'tablet',
       brand: 'Genérica / Institucional',
       model: "Tablet 7''-10'' (Tablet Fondacio 04)",
       purchaseDate: '2022-05-10',
       provider: 'Donación Proyecto Educativo Fondacio',
+      image: 'img/tablet_educativa_android.jpg',
       
       serial: 'TAB-AND5-04-FND',
       processor: 'Quad-Core ARM Cortex @ 1.30 GHz',
@@ -790,12 +797,13 @@ const INITIAL_SEED_DATA = {
       id: 'ast-real-tab05',
       code: 'TAB-05',
       area: 'AULA TIC / LECTURA COMUNITARIA',
-      computerType: 'MINIPC',
+      computerType: 'TABLET',
       category: 'tablet',
       brand: 'Genérica / Institucional',
       model: "Tablet 7''-10'' (Tablet Fondacio 05)",
       purchaseDate: '2022-05-10',
       provider: 'Donación Proyecto Educativo Fondacio',
+      image: 'img/tablet_educativa_android.jpg',
       
       serial: 'TAB-AND5-05-FND',
       processor: 'Quad-Core ARM Cortex @ 1.30 GHz',
@@ -1012,10 +1020,10 @@ class DataStore {
         if (!parsed.themeConfig) {
           parsed.themeConfig = DEFAULT_THEME_CONFIG;
         }
-        // Si no tiene los nuevos PCs reales del censo de Septiembre 2026, refrescar
-        const hasPC04 = (parsed.assets || []).some(a => a.code === 'PC-04');
-        if (!hasPC04) {
-          console.info('Actualizando datos con el Censo Oficial de Septiembre 2026...');
+        // Verificar si los activos tienen imágenes asignadas
+        const hasImages = (parsed.assets || []).some(a => a.image);
+        if (!hasImages) {
+          console.info('Actualizando catálogo con imágenes y valores de hardware...');
           this.saveToStorage(INITIAL_SEED_DATA);
           return JSON.parse(JSON.stringify(INITIAL_SEED_DATA));
         }

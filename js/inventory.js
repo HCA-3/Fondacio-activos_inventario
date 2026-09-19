@@ -105,6 +105,68 @@ function getSedeDot(sede) {
   return '<span class="dot" style="background-color: var(--secondary-500);"></span>';
 }
 
+function formatCurrencyCOP(amount) {
+  if (!amount || isNaN(amount)) return '$ 0 COP';
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    maximumFractionDigits: 0
+  }).format(amount);
+}
+
+function handleImageFileUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  if (file.size > 3 * 1024 * 1024) {
+    showToast('La imagen es algo pesada (>3MB). Se optimizará para almacenamiento local.', 'info');
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e.target.result;
+    const urlInput = document.getElementById('asset-image-url');
+    const preview = document.getElementById('asset-image-preview');
+    if (urlInput) urlInput.value = dataUrl;
+    if (preview) preview.src = dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleImageUrlChange(url) {
+  const preview = document.getElementById('asset-image-preview');
+  if (preview) {
+    preview.src = url.trim() || 'img/dell_latitude_7480.jpg';
+  }
+}
+
+function setAssetImagePreset(presetUrl) {
+  const urlInput = document.getElementById('asset-image-url');
+  const preview = document.getElementById('asset-image-preview');
+  if (urlInput) urlInput.value = presetUrl;
+  if (preview) preview.src = presetUrl;
+}
+
+function clearAssetImage() {
+  const fileInput = document.getElementById('asset-image-file');
+  const urlInput = document.getElementById('asset-image-url');
+  const preview = document.getElementById('asset-image-preview');
+  if (fileInput) fileInput.value = '';
+  if (urlInput) urlInput.value = '';
+  if (preview) preview.src = 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500&auto=format&fit=crop&q=60';
+}
+
+function updateAssetPricePreview(val) {
+  const preview = document.getElementById('asset-value-formatted-preview');
+  if (!preview) return;
+  const num = Number(val) || 0;
+  preview.textContent = new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    maximumFractionDigits: 0
+  }).format(num);
+}
+
 function renderTableView(assets) {
   const tbody = document.getElementById('inventory-table-body');
   if (!tbody) return;
@@ -116,6 +178,7 @@ function renderTableView(assets) {
     const licenseAlertBadge = asset.licenseState === 'NO ACTIVADO' 
       ? '<span style="color: var(--accent-rose); font-weight: 700; font-size: 0.7rem;">⚠️ Requiere Licencia</span>'
       : '';
+    const imgUrl = asset.image || (isTablet ? 'img/tablet_educativa_android.jpg' : 'img/dell_latitude_7480.jpg');
 
     return `
       <tr>
@@ -125,19 +188,25 @@ function renderTableView(assets) {
           ${licenseAlertBadge ? `<div style="margin-top: 0.2rem;">${licenseAlertBadge}</div>` : ''}
         </td>
         <td>
-          <div class="asset-main-info">
-            <span class="asset-title">${escapeHtml(asset.brand)} ${escapeHtml(asset.model)}</span>
-            <span class="asset-specs">
-              <strong>${escapeHtml(asset.processor || 'CPU')}</strong> 
-              ${asset.cpuCores ? `(${escapeHtml(asset.cpuCores)})` : ''}
-            </span>
-            <span style="font-size: 0.72rem; color: var(--primary-600); font-weight: 600;">
-              RAM: ${escapeHtml(asset.ram || '')} | Almacenamiento: ${escapeHtml(diskInfo)}
-              ${asset.diskFree ? ` • ${escapeHtml(asset.diskFree)} libres` : ''}
-            </span>
-            <span style="font-size: 0.7rem; color: var(--text-secondary);">
-              S.O.: ${escapeHtml(asset.os || 'N/A')}
-            </span>
+          <div class="asset-table-item-wrap">
+            <img src="${imgUrl}" class="asset-table-thumb" alt="${escapeHtml(asset.model)}" onerror="this.src='https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=200&auto=format&fit=crop&q=60'">
+            <div class="asset-main-info" style="flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+                <span class="asset-title">${escapeHtml(asset.brand)} ${escapeHtml(asset.model)}</span>
+                ${asset.estimatedValue ? `<span class="asset-price-badge">${formatCurrencyCOP(asset.estimatedValue)}</span>` : ''}
+              </div>
+              <span class="asset-specs">
+                <strong>${escapeHtml(asset.processor || 'CPU')}</strong> 
+                ${asset.cpuCores ? `(${escapeHtml(asset.cpuCores)})` : ''}
+              </span>
+              <span style="font-size: 0.72rem; color: var(--primary-600); font-weight: 600;">
+                RAM: ${escapeHtml(asset.ram || '')} | Almacenamiento: ${escapeHtml(diskInfo)}
+                ${asset.diskFree ? ` • ${escapeHtml(asset.diskFree)} libres` : ''}
+              </span>
+              <span style="font-size: 0.7rem; color: var(--text-secondary);">
+                S.O.: ${escapeHtml(asset.os || 'N/A')}
+              </span>
+            </div>
           </div>
         </td>
         <td>
@@ -186,9 +255,14 @@ function renderGridView(assets) {
   container.innerHTML = assets.map(asset => {
     const isTablet = asset.category === 'tablet' || (asset.code && asset.code.startsWith('TAB'));
     const diskInfo = asset.disk1Capacity ? `${asset.disk1Capacity} (${asset.disk1Tech || 'SSD'})` : 'eMMC';
+    const imgUrl = asset.image || (isTablet ? 'img/tablet_educativa_android.jpg' : 'img/dell_latitude_7480.jpg');
 
     return `
       <div class="asset-card">
+        <div class="asset-card-img-wrap">
+          <img src="${imgUrl}" alt="${escapeHtml(asset.brand)} ${escapeHtml(asset.model)}" class="asset-card-img" onerror="this.src='https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=600&auto=format&fit=crop&q=60'">
+          ${asset.estimatedValue ? `<span class="asset-price-badge">${formatCurrencyCOP(asset.estimatedValue)}</span>` : ''}
+        </div>
         <div class="asset-card-top">
           <div>
             <span class="asset-code-badge">${asset.code}</span>
@@ -259,6 +333,15 @@ function openNewAssetModal() {
   document.getElementById('modal-asset-title').textContent = 'Registrar Nueva Hoja de Vida de Equipo';
   document.getElementById('asset-id').value = '';
   
+  // Image & price defaults
+  const imgUrlEl = document.getElementById('asset-image-url');
+  const imgPreviewEl = document.getElementById('asset-image-preview');
+  const valEl = document.getElementById('asset-value');
+  if (imgUrlEl) imgUrlEl.value = 'img/dell_latitude_7480.jpg';
+  if (imgPreviewEl) imgPreviewEl.src = 'img/dell_latitude_7480.jpg';
+  if (valEl) valEl.value = 0;
+  updateAssetPricePreview(0);
+
   suggestAssetCode();
   
   // Establecer fecha de inventario de hoy
@@ -282,6 +365,16 @@ function openEditAssetModal(id) {
   document.getElementById('asset-model').value = a.model || '';
   document.getElementById('asset-purchase-date').value = a.purchaseDate || '';
   document.getElementById('asset-provider').value = a.provider || '';
+
+  // Imagen y Valor Estimado
+  const defaultImg = a.category === 'tablet' || (a.code && a.code.startsWith('TAB')) ? 'img/tablet_educativa_android.jpg' : 'img/dell_latitude_7480.jpg';
+  const imgUrlEl = document.getElementById('asset-image-url');
+  const imgPreviewEl = document.getElementById('asset-image-preview');
+  const valEl = document.getElementById('asset-value');
+  if (imgUrlEl) imgUrlEl.value = a.image || defaultImg;
+  if (imgPreviewEl) imgPreviewEl.src = a.image || defaultImg;
+  if (valEl) valEl.value = a.estimatedValue || 0;
+  updateAssetPricePreview(a.estimatedValue || 0);
   
   // Hardware
   document.getElementById('asset-code').value = a.code || '';
@@ -343,7 +436,6 @@ function openEditAssetModal(id) {
   document.getElementById('asset-status').value = a.status || 'operativo';
   document.getElementById('asset-condition').value = a.condition || 'Excelente';
   document.getElementById('asset-recommendations').value = a.recommendations || '';
-  document.getElementById('asset-value').value = a.estimatedValue || 0;
 
   openModal('modal-asset-form');
 }
@@ -363,91 +455,99 @@ function handleSaveAssetForm(e) {
   const id = document.getElementById('asset-id').value;
   const rawType = document.getElementById('asset-computer-type').value;
   const isTablet = rawType === 'TABLET' || rawType === 'MINIPC';
+  const imgUrl = document.getElementById('asset-image-url')?.value.trim() || (isTablet ? 'img/tablet_educativa_android.jpg' : 'img/dell_latitude_7480.jpg');
+
+  // Fallback defaults si los campos se dejan vacíos
+  let rawCode = document.getElementById('asset-code').value.trim().toUpperCase();
+  if (!rawCode) {
+    const assets = DB.getAssets();
+    rawCode = `PC-${String(assets.length + 1).padStart(2, '0')}`;
+  }
+
+  const rawBrand = document.getElementById('asset-brand').value.trim() || 'Sin Marca';
+  const rawModel = document.getElementById('asset-model').value.trim() || (isTablet ? 'Tablet' : 'Equipo de Cómputo');
+  const rawArea = document.getElementById('asset-area').value.trim().toUpperCase() || 'GENERAL';
+  const rawSede = document.getElementById('asset-sede').value || 'Altos del Cabo';
 
   const assetData = {
     id: id || undefined,
-    area: document.getElementById('asset-area').value.trim().toUpperCase(),
-    computerType: rawType,
+    area: rawArea,
+    computerType: rawType || 'PORTÁTIL',
     category: isTablet ? 'tablet' : rawType === 'PORTÁTIL' ? 'laptop' : 'desktop',
-    brand: document.getElementById('asset-brand').value.trim(),
-    model: document.getElementById('asset-model').value.trim(),
-    purchaseDate: document.getElementById('asset-purchase-date').value,
-    provider: document.getElementById('asset-provider').value.trim(),
+    brand: rawBrand,
+    model: rawModel,
+    purchaseDate: document.getElementById('asset-purchase-date').value || '',
+    provider: document.getElementById('asset-provider').value.trim() || 'Inventario Institucional',
+    image: imgUrl,
     
     // Hardware
-    code: document.getElementById('asset-code').value.trim().toUpperCase(),
-    serial: document.getElementById('asset-serial').value.trim(),
-    processor: document.getElementById('asset-processor').value.trim(),
-    gpu: document.getElementById('asset-gpu').value.trim(),
-    ram: document.getElementById('asset-ram').value.trim(),
+    code: rawCode,
+    serial: document.getElementById('asset-serial').value.trim() || 'S/N',
+    processor: document.getElementById('asset-processor').value.trim() || '',
+    gpu: document.getElementById('asset-gpu').value.trim() || '',
+    ram: document.getElementById('asset-ram').value.trim() || '',
     
     // Disco 1
-    disk1Brand: document.getElementById('asset-d1-brand').value.trim(),
-    disk1Capacity: document.getElementById('asset-d1-cap').value.trim(),
-    disk1Tech: document.getElementById('asset-d1-tech').value,
-    disk1Serial: document.getElementById('asset-d1-serial').value.trim(),
-    disk1Model: document.getElementById('asset-d1-model').value.trim(),
+    disk1Brand: document.getElementById('asset-d1-brand').value.trim() || '',
+    disk1Capacity: document.getElementById('asset-d1-cap').value.trim() || '',
+    disk1Tech: document.getElementById('asset-d1-tech').value || 'SSD',
+    disk1Serial: document.getElementById('asset-d1-serial').value.trim() || '',
+    disk1Model: document.getElementById('asset-d1-model').value.trim() || '',
     
     // Disco 2
-    disk2Brand: document.getElementById('asset-d2-brand').value.trim(),
-    disk2Capacity: document.getElementById('asset-d2-cap').value.trim(),
-    disk2Tech: document.getElementById('asset-d2-tech').value,
-    disk2Serial: document.getElementById('asset-d2-serial').value.trim(),
-    disk2Model: document.getElementById('asset-d2-model').value.trim(),
+    disk2Brand: document.getElementById('asset-d2-brand').value.trim() || '',
+    disk2Capacity: document.getElementById('asset-d2-cap').value.trim() || '',
+    disk2Tech: document.getElementById('asset-d2-tech').value || '',
+    disk2Serial: document.getElementById('asset-d2-serial').value.trim() || '',
+    disk2Model: document.getElementById('asset-d2-model').value.trim() || '',
     
     // Periféricos
-    monitorBrandModel: document.getElementById('asset-monitor-model').value.trim(),
-    monitorPlate: document.getElementById('asset-monitor-plate').value.trim(),
-    keyboardBrandModel: document.getElementById('asset-keyboard-model').value.trim(),
-    keyboardPlate: document.getElementById('asset-keyboard-plate').value.trim(),
-    mouseBrandModel: document.getElementById('asset-mouse-model').value.trim(),
-    mousePlate: document.getElementById('asset-mouse-plate').value.trim(),
-    otherPeripherals: document.getElementById('asset-other-peripherals').value.trim(),
+    monitorBrandModel: document.getElementById('asset-monitor-model').value.trim() || '',
+    monitorPlate: document.getElementById('asset-monitor-plate').value.trim() || '',
+    keyboardBrandModel: document.getElementById('asset-keyboard-model').value.trim() || '',
+    keyboardPlate: document.getElementById('asset-keyboard-plate').value.trim() || '',
+    mouseBrandModel: document.getElementById('asset-mouse-model').value.trim() || '',
+    mousePlate: document.getElementById('asset-mouse-plate').value.trim() || '',
+    otherPeripherals: document.getElementById('asset-other-peripherals').value.trim() || '',
     
     // Red
-    networkInUse: document.getElementById('asset-net-in-use').value,
-    networkHostname: document.getElementById('asset-net-hostname').value.trim(),
-    ip: document.getElementById('asset-ip').value.trim(),
-    mac: document.getElementById('asset-mac').value.trim(),
-    networkCardBrand: document.getElementById('asset-net-card').value.trim(),
-    networkSpeed: document.getElementById('asset-net-speed').value.trim(),
-    domain: document.getElementById('asset-domain').value.trim(),
+    networkInUse: document.getElementById('asset-net-in-use').value || 'WIFI',
+    networkHostname: document.getElementById('asset-net-hostname').value.trim() || rawCode,
+    ip: document.getElementById('asset-ip').value.trim() || 'DHCP',
+    mac: document.getElementById('asset-mac').value.trim() || '',
+    networkCardBrand: document.getElementById('asset-net-card').value.trim() || '',
+    networkSpeed: document.getElementById('asset-net-speed').value.trim() || '',
+    domain: document.getElementById('asset-domain').value.trim() || 'WORKGROUP',
     
     // S.O.
-    os: document.getElementById('asset-os').value.trim(),
+    os: document.getElementById('asset-os').value.trim() || '',
     
     // Inventario
-    inventoryDate: document.getElementById('asset-inv-date').value,
-    inventoriedBy: document.getElementById('asset-inventoried-by').value.trim(),
-    inventoryObservations: document.getElementById('asset-inv-observations').value.trim(),
-    approvedBy: document.getElementById('asset-approved-by').value.trim(),
+    inventoryDate: document.getElementById('asset-inv-date').value || new Date().toISOString().split('T')[0],
+    inventoriedBy: document.getElementById('asset-inventoried-by').value.trim() || 'Fondacio TIC',
+    inventoryObservations: document.getElementById('asset-inv-observations').value.trim() || '',
+    approvedBy: document.getElementById('asset-approved-by').value.trim() || '',
     
     // Ubicación
-    assignedTo: document.getElementById('asset-assigned-to').value.trim(),
-    assignedRole: document.getElementById('asset-assigned-role').value.trim(),
-    sede: document.getElementById('asset-sede').value,
-    location: document.getElementById('asset-location').value.trim(),
-    physicalAddress: document.getElementById('asset-address').value.trim(),
-    assignmentDate: document.getElementById('asset-assign-date').value,
+    assignedTo: document.getElementById('asset-assigned-to').value.trim() || 'Sin Asignar',
+    assignedRole: document.getElementById('asset-assigned-role').value.trim() || '',
+    sede: rawSede,
+    location: document.getElementById('asset-location').value.trim() || 'Sede Fondacio',
+    physicalAddress: document.getElementById('asset-address').value.trim() || '',
+    assignmentDate: document.getElementById('asset-assign-date').value || '',
     
     // Estado y Recomendaciones
-    status: document.getElementById('asset-status').value,
-    condition: document.getElementById('asset-condition').value,
-    recommendations: document.getElementById('asset-recommendations').value.trim(),
+    status: document.getElementById('asset-status').value || 'operativo',
+    condition: document.getElementById('asset-condition').value || 'Bueno',
+    recommendations: document.getElementById('asset-recommendations').value.trim() || '',
     estimatedValue: Number(document.getElementById('asset-value').value) || 0
   };
 
-  if (!assetData.code || !assetData.brand || !assetData.model) {
-    showToast('Por favor completa los campos obligatorios (Placa, Marca y Modelo).', 'error');
-    return;
-  }
-
-  // Verificar código único
+  // Si no se editaba un activo existente y el código ya existe, asignarle un sufijo para no generar colisión
   if (!id) {
     const existing = DB.getAssetByCode(assetData.code);
     if (existing) {
-      showToast(`Ya existe un equipo registrado con la placa ${assetData.code}.`, 'error');
-      return;
+      assetData.code = `${assetData.code}-${Date.now().toString().slice(-3)}`;
     }
   }
 
@@ -479,6 +579,7 @@ function viewHojaDeVida(id) {
   if (!container) return;
 
   const isTablet = a.category === 'tablet' || (a.code && a.code.startsWith('TAB'));
+  const imgUrl = a.image || (isTablet ? 'img/tablet_educativa_android.jpg' : 'img/dell_latitude_7480.jpg');
 
   container.innerHTML = `
     <div class="hoja-de-vida-container printable-area">
@@ -499,6 +600,25 @@ function viewHojaDeVida(id) {
             ID: ${a.code}
           </div>
           <div style="font-size: 0.7rem; color: #64748b; margin-top: 2px;">Levantamiento: ${a.inventoryDate || 'Septiembre 2026'}</div>
+        </div>
+      </div>
+
+      <!-- Ficha Visual del Equipo y Avalúo Comercial -->
+      <div style="display: flex; gap: 1rem; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;">
+        <img src="${imgUrl}" alt="${escapeHtml(a.model)}" style="width: 130px; height: 90px; object-fit: cover; border-radius: 6px; border: 1px solid #94a3b8; background: #fff;" onerror="this.src='https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=300&auto=format&fit=crop&q=60'">
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+            <span style="font-size: 1.05rem; font-weight: 800; color: #0f172a;">${escapeHtml(a.brand)} ${escapeHtml(a.model)}</span>
+            <span style="background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; padding: 3px 10px; border-radius: 20px; font-weight: 800; font-size: 0.85rem;">
+              💰 Avalúo Estimado: ${formatCurrencyCOP(a.estimatedValue || 0)}
+            </span>
+          </div>
+          <div style="font-size: 0.78rem; color: #475569; margin-top: 4px;">
+            Estado de Conservación: <strong style="color: #1b5e20;">${escapeHtml(a.condition || 'Excelente')}</strong> • Tipo: <strong>${isTablet ? 'Tablet Educativa' : escapeHtml(a.computerType || 'Portátil')}</strong>
+          </div>
+          <div style="font-size: 0.73rem; color: #64748b; margin-top: 2px;">
+            Responsable Asignado: <strong>${escapeHtml(a.assignedTo || 'Sin asignar')}</strong> (${escapeHtml(a.assignedRole || 'Personal Fondacio')})
+          </div>
         </div>
       </div>
 
