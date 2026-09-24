@@ -6,7 +6,7 @@
   <title>Inventario y Hojas de Vida de Hardware | Fundación Fondacio Colombia</title>
   <meta name="description" content="Sistema de Gestión, Control y Hojas de Vida de Equipos de Cómputo de la Fundación Fondacio Colombia - Sedes YLDC Potosí, Altos del Cabo y personalización completa.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
-  
+
   <!-- Google Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +30,7 @@
 <body>
 
   <div class="app-container">
-    
+
     <!-- BARRA LATERAL (SIDEBAR) -->
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -43,7 +43,7 @@
 
       <nav class="sidebar-nav">
         <div class="nav-section-title">Principal</div>
-        
+
         <a class="nav-item active" data-view="dashboard" id="nav-dashboard">
           <i data-lucide="layout-dashboard"></i>
           <span>Dashboard</span>
@@ -107,7 +107,7 @@
 
     <!-- ÁREA PRINCIPAL -->
     <main class="main-wrapper">
-      
+
       <!-- TOPBAR SUPERIOR -->
       <header class="topbar">
         <div class="topbar-left">
@@ -143,10 +143,10 @@
 
       <!-- CONTENEDOR DINÁMICO DE VISTAS (SPA) -->
       <div class="content-body">
-        
+
         <!-- VISTA 1: DASHBOARD -->
         <section class="view-section active" id="view-dashboard">
-          
+
           <!-- Métricas Superiores -->
           <div class="metrics-grid">
             <div class="metric-card">
@@ -267,7 +267,7 @@
 
         <!-- VISTA 2: INVENTARIO DE HARDWARE & HOJAS DE VIDA -->
         <section class="view-section" id="view-inventario">
-          
+
           <!-- Barra de Filtros y Búsqueda -->
           <div class="toolbar-card">
             <div class="toolbar-row">
@@ -494,7 +494,7 @@
         <!-- VISTA 5: RESPALDO Y CONFIGURACIÓN -->
         <section class="view-section" id="view-respaldo">
           <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
-            
+
             <div class="card-panel">
               <div class="card-panel-header">
                 <h3>💾 Copia de Seguridad y Restauración</h3>
@@ -731,7 +731,7 @@
           <input type="hidden" id="asset-id" />
 
           <div class="form-grid">
-            
+
             <!-- CABECERA: ÁREA Y TIPO -->
             <div class="form-group">
               <label for="asset-area">Área / Dependencia</label>
@@ -759,7 +759,7 @@
             <!-- Panel de Carga de Imagen y Previsualización -->
             <div class="form-group col-span-2" style="background: var(--bg-surface-elevated, #f8fafc); border: 1px dashed var(--border-subtle); border-radius: 12px; padding: 1rem;">
               <div style="display: flex; gap: 1.25rem; align-items: flex-start; flex-wrap: wrap;">
-                
+
                 <!-- Preview de Imagen -->
                 <div style="width: 140px; height: 110px; border-radius: 8px; border: 2px solid var(--border-subtle); overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0;">
                   <img id="asset-image-preview" src="img/dell_latitude_7480.jpg" alt="Foto del Equipo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231e293b%22 width=%22100%22 height=%22100%22/><text fill=%22%2394a3b8%22 x=%2250%22 y=%2255%22 font-size=%2224%22 text-anchor=%22middle%22>💻</text></svg>'" />
@@ -1163,7 +1163,7 @@
               <h4>FONDACIO COLOMBIA</h4>
               <p>Control de Inventario de Hardware</p>
             </div>
-            
+
             <div class="qr-canvas-holder" id="qr-canvas-target">
               <!-- Canvas QR generado aquí -->
             </div>
@@ -1206,7 +1206,7 @@
       <form id="form-loan">
         <div class="modal-body">
           <div class="form-grid">
-            
+
             <div class="form-group col-span-2">
               <label for="loan-asset-id">Seleccionar Equipo de Hardware <span class="required">*</span></label>
               <select id="loan-asset-id" class="form-control" required>
@@ -1324,7 +1324,7 @@
       <form id="form-maintenance">
         <div class="modal-body">
           <div class="form-grid">
-            
+
             <div class="form-group col-span-2">
               <label for="maint-asset-id">Equipo de Hardware <span class="required">*</span></label>
               <select id="maint-asset-id" class="form-control" required>
@@ -1405,6 +1405,8 @@
 
   <!-- Scripts de la Aplicación -->
   <script src="js/data.js"></script>
+  <!-- Conexión con la base de datos local SQLite (debe ir justo después de data.js) -->
+  <script src="js/local-db.js"></script>
   <script src="js/customizer.js"></script>
   <script src="js/sedes.js"></script>
   <script src="js/dashboard.js"></script>
