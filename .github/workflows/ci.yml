@@ -60,6 +60,10 @@ jobs:
     needs: [pruebas, imagen]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Hace que GitHub muestre en el repo la sección "Deployments" con el enlace a la aplicación.
+    environment:
+      name: produccion
+      url: https://fondacio-inventario.onrender.com
     steps:
       - name: Pedir a Render que despliegue este commit
         env:

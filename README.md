@@ -2,6 +2,8 @@
 
 Sistema web moderno, ágil y autónomo para la gestión integral de activos tecnológicos, equipos de cómputo, redes y periféricos de la **Fundación Fondacio Colombia** ([fondaciocolombia.org](https://www.fondaciocolombia.org)).
 
+**Aplicación en línea:** https://fondacio-inventario.onrender.com
+
 Diseñado especialmente para el control y trazabilidad de los recursos en los dos proyectos y sedes principales:
 - **Centro de Formación YLDC Potosí** (Ciudad Bolívar, Bogotá) - Aulas de informática y desarrollo juvenil.
 - **Centro de Ecología Integral Altos del Cabo** (San Luis, Chapinero, Bogotá) - Gestión comunitaria y ambiental.
