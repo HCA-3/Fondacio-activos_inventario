@@ -46,6 +46,15 @@ Diseñado especialmente para el control y trazabilidad de los recursos en los do
 
 La aplicación es una Single Page Application (SPA) sin dependencias de compilación complejas. Para abrirla:
 
+### Opción 0: Con el Backend (API + Base de Datos)
+Requiere Docker. Levanta la aplicación junto con PostgreSQL:
+```bash
+docker compose up --build
+```
+Luego ingresa a `http://localhost:8000`. La documentación interactiva de la API queda en `http://localhost:8000/docs`.
+
+El backend está en construcción: por ahora el frontend sigue guardando en el navegador.
+
 ### Opción 1: Directamente en el Navegador
 1. Haz doble clic en el archivo `frontend/index.html` o ábrelo con cualquier navegador moderno (Google Chrome, Microsoft Edge, Firefox, Safari).
 
@@ -66,6 +75,9 @@ Luego ingresa en tu navegador a: `http://localhost:8080` (o el puerto indicado).
 
 ```
 Fondacio-activos_inventario/
+├── backend/              # API en FastAPI + SQLAlchemy (migraciones en alembic/, pruebas en tests/)
+├── compose.yaml          # Entorno local: aplicación + PostgreSQL
+├── Dockerfile            # Imagen única: la API sirve también el frontend
 ├── frontend/
 │   ├── index.html        # Estructura de la aplicación SPA, modales y plantillas
 │   ├── css/
