@@ -10,7 +10,7 @@ Se actualiza a medida que el backend crece. Lo que ya está disponible:
 | Usuarios | Disponible (solo administradores) |
 | Sedes, equipos, préstamos, mantenimientos | Disponible |
 | Configuración (tema y datos de la organización) | Disponible |
-| Panel, exportación a Excel, fotos | Pendiente |
+| Panel, exportación a Excel, fotos | Disponible |
 
 ## 1. Levantar todo en tu máquina
 
@@ -196,7 +196,9 @@ Lo que hoy hace cada método de `js/data.js` y la ruta que lo reemplaza:
 | `DB.getThemeConfig()` | `GET /api/configuracion` → `themeConfig` |
 | `DB.saveThemeConfig(config)` | `PATCH /api/configuracion` con `{themeConfig: {...}}` |
 | `DB.data.settings` | `GET /api/configuracion` → `settings` |
-| `DB.getDashboardStats()` | Pendiente (`GET /api/dashboard`) |
+| `DB.getDashboardStats()` | `GET /api/dashboard` |
+| `exportInventoryToExcel()` | Descargar `GET /api/equipos/export.xlsx` |
+| Foto elegida en el formulario (base64) | `PUT /api/equipos/{id}/imagen` |
 | `DB.exportJSON()`, `DB.importJSON()`, `DB.resetToInitial()` | Desaparecen: los datos viven en el servidor |
 
 Lo que cambia de fondo:
@@ -251,7 +253,7 @@ El detalle trae esos mismos campos y, al mismo nivel, todos los de la ficha téc
 - Cualquier campo que no esté en la lista de arriba se guarda en la ficha técnica. Debe ser texto, número, booleano o `null`.
 - En un `PATCH`, enviar un campo de la ficha en `null` lo elimina.
 - Se puede reenviar el equipo completo al guardar: `id`, `createdAt`, `updatedAt` y `sedeId` se ignoran.
-- `image` es una ruta o URL de hasta 500 caracteres. No admite la imagen incrustada en base64; la subida de fotos está pendiente.
+- `image` es una ruta o URL de hasta 500 caracteres. No admite la imagen incrustada en base64: las fotos se suben aparte (sección 14).
 
 ### Estado
 
@@ -411,8 +413,76 @@ Filtros: `estado`, `tipo` y `equipo` (id).
 - El modo claro u oscuro sigue siendo preferencia de cada navegador (`localStorage`).
 - Hace falta sesión para leerla, así que la pantalla de login usa los colores por defecto.
 
-## 12. Lo que viene
+## 12. Panel
 
-- `GET /api/dashboard`: los totales del panel calculados en el servidor.
-- `GET /api/equipos/export.xlsx`: el Excel generado por el servidor, con los mismos filtros de la lista.
-- Subida de fotos de los equipos.
+`GET /api/dashboard` devuelve los totales ya calculados, con los mismos nombres que `DB.getDashboardStats()`:
+
+```json
+{
+  "total": 9,
+  "operativos": 6,
+  "prestados": 2,
+  "mantenimiento": 1,
+  "bodega": 0,
+  "baja": 0,
+  "totalValue": 9700000,
+  "bySede": { "Altos del Cabo": 9, "Sede Administrativa": 0, "YLDC Potosí": 0 },
+  "byCategory": { "PORTÁTIL": 4, "TABLETS": 5 },
+  "activeLoansCount": 2,
+  "overdueLoansCount": 0,
+  "pendingMaintCount": 1
+}
+```
+
+- `bySede` incluye las sedes sin equipos, en cero.
+- `byCategory` agrupa igual que antes: las tablets juntas en `TABLETS`, el resto por `computerType`, y `Otros` si no tiene.
+- `overdueLoansCount` es nuevo: los préstamos activos con la fecha de devolución pasada.
+
+El resto del panel sale de las listas:
+
+| Bloque del panel | Petición |
+|---|---|
+| Préstamos vigentes | `GET /api/prestamos?estado=activo` |
+| Mantenimientos en curso | `GET /api/mantenimientos?estado=en_progreso` y `?estado=programado` |
+| Últimos equipos registrados | `GET /api/equipos?limit=3` (vienen del más reciente al más antiguo) |
+
+## 13. Exportar a Excel
+
+`GET /api/equipos/export.xlsx` devuelve el archivo con las mismas cuatro hojas y columnas que generaba `exportInventoryToExcel()`. Acepta los mismos filtros que la lista de equipos y trae todos los equipos que coincidan, sin paginar.
+
+Como es una descarga, basta un enlace:
+
+```js
+const filtros = new URLSearchParams({ sede: 'Altos del Cabo', estado: 'operativo' });
+window.location.href = `/api/equipos/export.xlsx?${filtros}`;
+```
+
+Con esto se puede quitar del `index.html` la librería SheetJS (`xlsx.full.min.js`), que es de las más pesadas de la página.
+
+## 14. Fotos de los equipos
+
+| Acción | Petición | Respuesta |
+|---|---|---|
+| Subir o reemplazar (solo `admin`) | `PUT /api/equipos/{id}/imagen` | El equipo completo, con `image` actualizado |
+| Ver | `GET /api/equipos/{id}/imagen` | La imagen en WebP |
+| Quitar (solo `admin`) | `DELETE /api/equipos/{id}/imagen` | 204 |
+
+El cuerpo del `PUT` es el archivo tal cual, sin formulario ni base64:
+
+```js
+const archivo = document.getElementById('asset-image-file').files[0];
+const res = await fetch(`/api/equipos/${id}/imagen`, {
+  method: 'PUT',
+  headers: { 'Content-Type': archivo.type },
+  body: archivo
+});
+const equipo = await res.json();
+```
+
+- Formatos: JPEG, PNG y WebP. Máximo 10 MB (413 si se pasa).
+- El servidor la reduce a 1280 px de lado como máximo y la guarda en WebP.
+- Después de subirla, `image` del equipo vale `/api/equipos/{id}/imagen?v=...` y sirve directamente como `src` de un `<img>`. No hay que hacer nada más para mostrarla.
+- Esa dirección cambia cada vez que se reemplaza la foto, así que el navegador nunca muestra una vieja.
+- El equipo debe existir antes de subirle la foto: al crear uno nuevo, primero `POST /api/equipos` y luego el `PUT` con el `id` que devuelve.
+- Si con un `PATCH` se cambia `image` por otra ruta o se deja vacío, la foto subida se descarta.
+- Las imágenes de `frontend/img/` siguen funcionando igual: son rutas normales en `image`.
