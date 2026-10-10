@@ -1,0 +1,35 @@
+# Entorno local: la app en http://localhost:8000 y Postgres en el puerto 5432.
+# Uso:  docker compose up --build
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: fondacio
+      POSTGRES_PASSWORD: fondacio
+      POSTGRES_DB: fondacio
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fondacio -d fondacio"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://fondacio:fondacio@db:5432/fondacio
+    ports:
+      - "8000:8000"
+    volumes:
+      # Los cambios en el frontend se ven al recargar la página, sin reconstruir la imagen.
+      - ./frontend:/app/frontend:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
