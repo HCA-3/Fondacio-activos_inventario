@@ -1,10 +1,19 @@
 """Equipos del inventario."""
 
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import CheckConstraint, Date, ForeignKey, Numeric, Text
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    LargeBinary,
+    Numeric,
+    Text,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -65,3 +74,18 @@ class Equipo(Trazable, Base):
     @property
     def nombre(self) -> str:
         return f"{self.marca} {self.modelo}".strip()
+
+
+class EquipoImagen(Base):
+    """Foto subida de un equipo, ya reducida. Tabla aparte para no cargarla con el equipo."""
+
+    __tablename__ = "equipo_imagenes"
+
+    equipo_id: Mapped[str] = mapped_column(
+        ForeignKey("equipos.id", ondelete="CASCADE"), primary_key=True
+    )
+    contenido: Mapped[bytes] = mapped_column(LargeBinary)
+    tipo: Mapped[str] = mapped_column(Text)
+    actualizado_en: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

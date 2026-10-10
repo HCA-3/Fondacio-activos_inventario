@@ -1,10 +1,10 @@
 """Reglas de los equipos y de su estado."""
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.errores import Conflicto, DatoInvalido
-from app.models import Equipo, EstadoEquipo, Mantenimiento, Prestamo, Usuario
+from app.models import Equipo, EquipoImagen, EstadoEquipo, Mantenimiento, Prestamo, Usuario
 from app.models.equipo import ESTADOS_DEL_SISTEMA
 from app.models.mantenimiento import ESTADOS_ABIERTOS
 from app.models.prestamo import EstadoPrestamo
@@ -15,6 +15,11 @@ from app.services.comun import aplicar_cambios, marcar_autor, resolver_sede, val
 ESTADO_AUTOMATICO = (
     "Ese estado lo pone el sistema al registrar un préstamo o un mantenimiento, no se elige a mano"
 )
+
+
+def ruta_de_imagen(equipo: Equipo) -> str:
+    """Dirección desde la que se sirve la foto subida de este equipo."""
+    return f"/api/equipos/{equipo.id}/imagen"
 
 
 def bloquear_equipo(bd: Session, equipo_id: str, campo: str = "assetId") -> Equipo:
@@ -100,6 +105,9 @@ def actualizar_equipo(bd: Session, equipo: Equipo, datos: EquipoCambios, autor: 
         _cambiar_estado(bd, equipo, datos.status)
 
     cambios = aplicar_cambios(equipo, datos, COLUMNAS)
+    if "imagen" in cambios and not equipo.imagen.startswith(ruta_de_imagen(equipo)):
+        # Se cambió por otra ruta o se quitó: la foto subida ya no se usa.
+        bd.execute(delete(EquipoImagen).where(EquipoImagen.equipo_id == equipo.id))
     if equipo.estado != estado_anterior:
         cambios["estado"] = [estado_anterior, equipo.estado]
     if sede.id != equipo.sede_id:
