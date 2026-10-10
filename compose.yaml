@@ -22,6 +22,8 @@ services:
     build: .
     environment:
       DATABASE_URL: postgresql+psycopg://fondacio:fondacio@db:5432/fondacio
+      # En local se entra por http://localhost; en producción la cookie exige HTTPS.
+      COOKIE_SECURE: "false"
     ports:
       - "8000:8000"
     volumes:

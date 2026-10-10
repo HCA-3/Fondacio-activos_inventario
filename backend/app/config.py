@@ -15,6 +15,9 @@ class Ajustes(BaseSettings):
 
     database_url: str
     frontend_dir: Path = RAIZ_REPO / "frontend"
+    # La cookie de sesión solo viaja por HTTPS. En local (http://localhost) se pone en false.
+    cookie_secure: bool = True
+    horas_sesion: int = 8
 
     @field_validator("database_url")
     @classmethod
