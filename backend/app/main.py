@@ -9,6 +9,7 @@ from app.errores import DatoInvalido, ErrorDeNegocio
 from app.routers import (
     auth,
     configuracion,
+    dashboard,
     equipos,
     mantenimientos,
     prestamos,
@@ -40,6 +41,7 @@ def crear_app() -> FastAPI:
         prestamos,
         mantenimientos,
         configuracion,
+        dashboard,
     ):
         app.include_router(modulo.router)
 
