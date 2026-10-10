@@ -18,6 +18,9 @@ URL_PRUEBAS = os.environ.get(
 )
 # La app lee DATABASE_URL al importarse; por eso los fixtures la importan dentro de la función.
 os.environ["DATABASE_URL"] = URL_PRUEBAS
+# Las pruebas no dependen del .env de cada quien: se fijan los valores de producción.
+os.environ["COOKIE_SECURE"] = "true"
+os.environ["HORAS_SESION"] = "8"
 
 CONTRASENA = "contrasena-de-prueba"
 # https: la cookie de sesión es Secure y el cliente no la enviaría por http.
@@ -74,7 +77,16 @@ def nuevo_cliente(bd: Session) -> Iterator[Callable[[], TestClient]]:
     from app.db import obtener_bd
     from app.main import app
 
-    app.dependency_overrides[obtener_bd] = lambda: bd
+    def bd_de_la_prueba() -> Iterator[Session]:
+        # En producción cada petición tiene su sesión y un fallo descarta sus cambios. Aquí la
+        # sesión se comparte entre peticiones, así que hay que descartarlos a mano.
+        try:
+            yield bd
+        except Exception:
+            bd.rollback()
+            raise
+
+    app.dependency_overrides[obtener_bd] = bd_de_la_prueba
     yield lambda: TestClient(app, base_url=URL_BASE)
     app.dependency_overrides.clear()
 
