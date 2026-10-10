@@ -47,16 +47,16 @@ Diseñado especialmente para el control y trazabilidad de los recursos en los do
 La aplicación es una Single Page Application (SPA) sin dependencias de compilación complejas. Para abrirla:
 
 ### Opción 1: Directamente en el Navegador
-1. Haz doble clic en el archivo `index.html` o ábrelo con cualquier navegador moderno (Google Chrome, Microsoft Edge, Firefox, Safari).
+1. Haz doble clic en el archivo `frontend/index.html` o ábrelo con cualquier navegador moderno (Google Chrome, Microsoft Edge, Firefox, Safari).
 
 ### Opción 2: Con un Servidor Local Ligero (Recomendado)
 Si tienes Node.js, Python o la extensión Live Server de VS Code / IDE:
 ```bash
 # Con Python
-python -m http.server 8080
+python -m http.server 8080 --directory frontend
 
 # Con npx serve
-npx serve .
+npx serve frontend
 ```
 Luego ingresa en tu navegador a: `http://localhost:8080` (o el puerto indicado).
 
@@ -66,16 +66,18 @@ Luego ingresa en tu navegador a: `http://localhost:8080` (o el puerto indicado).
 
 ```
 Fondacio-activos_inventario/
-├── index.html            # Estructura de la aplicación SPA, modales y plantillas
-├── css/
-│   └── styles.css        # Sistema de diseño institucional, temas y print CSS
-├── js/
-│   ├── data.js           # Capa de datos, base de datos local y catálogo inicial
-│   ├── dashboard.js      # Métricas, analítica y gráficos interactivos (Chart.js)
-│   ├── inventory.js      # CRUD de hardware, filtros, QR y exportación Excel
-│   ├── loans.js          # Préstamos de equipos y generación de actas de entrega
-│   ├── maintenance.js    # Mantenimientos y bitácora técnica
-│   └── app.js            # Orquestador general, rutas SPA, tema y modales
+├── frontend/
+│   ├── index.html        # Estructura de la aplicación SPA, modales y plantillas
+│   ├── css/
+│   │   └── styles.css    # Sistema de diseño institucional, temas y print CSS
+│   ├── img/              # Imágenes de referencia de los equipos
+│   └── js/
+│       ├── data.js       # Capa de datos y persistencia local (el inventario arranca vacío)
+│       ├── dashboard.js  # Métricas, analítica y gráficos interactivos (Chart.js)
+│       ├── inventory.js  # CRUD de hardware, filtros, QR y exportación Excel
+│       ├── loans.js      # Préstamos de equipos y generación de actas de entrega
+│       ├── maintenance.js # Mantenimientos y bitácora técnica
+│       └── app.js        # Orquestador general, rutas SPA, tema y modales
 └── README.md             # Documentación del sistema
 ```
 
