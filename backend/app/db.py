@@ -39,6 +39,7 @@ def obtener_motor() -> Engine:
 
 
 def obtener_bd() -> Iterator[Session]:
+    # Al salir del bloque la sesión se cierra y descarta lo que no llegó a commit.
     with Session(obtener_motor()) as bd:
         yield bd
 
