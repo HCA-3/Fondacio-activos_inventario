@@ -16,7 +16,13 @@ class Base(DeclarativeBase):
 @lru_cache
 def obtener_motor() -> Engine:
     # pool_pre_ping: Neon suspende la base sin uso y cierra las conexiones abiertas.
-    return create_engine(obtener_ajustes().database_url, pool_pre_ping=True)
+    # prepare_threshold=None: la conexión con pool de Neon (PgBouncer) reparte cada transacción
+    # a una conexión distinta, y las sentencias preparadas de psycopg no sobreviven a eso.
+    return create_engine(
+        obtener_ajustes().database_url,
+        pool_pre_ping=True,
+        connect_args={"prepare_threshold": None},
+    )
 
 
 def obtener_sesion() -> Iterator[Session]:

@@ -54,3 +54,19 @@ jobs:
         run: docker compose logs app
       - if: always()
         run: docker compose down --volumes
+
+  despliegue:
+    name: Despliegue en Render
+    needs: [pruebas, imagen]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pedir a Render que despliegue este commit
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::notice::Falta el secreto RENDER_DEPLOY_HOOK_URL; no se despliega."
+            exit 0
+          fi
+          curl --fail --silent --show-error --output /dev/null "${RENDER_DEPLOY_HOOK_URL}&ref=${GITHUB_SHA}"
