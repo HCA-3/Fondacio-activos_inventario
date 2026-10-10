@@ -1,13 +1,10 @@
 """Comprobaciones de estado del servicio."""
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
-from app.db import obtener_sesion
+from app.db import BD
 
 router = APIRouter(tags=["salud"])
 
@@ -19,9 +16,9 @@ def salud() -> dict[str, str]:
 
 
 @router.get("/health/db")
-def salud_db(sesion: Annotated[Session, Depends(obtener_sesion)]) -> dict[str, str]:
+def salud_db(bd: BD) -> dict[str, str]:
     try:
-        sesion.execute(text("SELECT 1"))
+        bd.execute(text("SELECT 1"))
     except SQLAlchemyError as error:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE, "Sin conexión con la base de datos"
