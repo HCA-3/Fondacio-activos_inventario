@@ -6,25 +6,37 @@ Uso, desde backend/:
 Usa la base de DATABASE_URL. Para producción, pon ahí la cadena de Neon solo para este comando.
 """
 
+import argparse
 import sys
 from getpass import getpass
 
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import obtener_motor
-from app.models import Rol
+from app.models import Rol, Usuario
 from app.schemas.usuario import UsuarioNuevo
+from app.security import hashear_contrasena
 from app.services.usuarios import UsuarioDuplicado, crear_usuario
 
 
 def main() -> int:
-    import argparse
-    parser = argparse.ArgumentParser(description="Crea o actualiza el usuario administrador inicial.")
+    parser = argparse.ArgumentParser(
+        description="Crea o actualiza el usuario administrador inicial."
+    )
     parser.add_argument("--usuario", default="admin", help="Nombre de usuario (por defecto: admin)")
     parser.add_argument("--nombre", default="Administrador Fondacio", help="Nombre completo")
-    parser.add_argument("--contrasena", default="012345678", help="Contraseña (por defecto: 012345678)")
-    parser.add_argument("--interactivo", action="store_true", help="Solicitar datos interactivamente por consola")
+    parser.add_argument(
+        "--contrasena",
+        default="012345678",
+        help="Contraseña (por defecto: 012345678)",
+    )
+    parser.add_argument(
+        "--interactivo",
+        action="store_true",
+        help="Solicitar datos interactivamente por consola",
+    )
     args = parser.parse_args()
 
     motor = obtener_motor()
@@ -50,10 +62,6 @@ def main() -> int:
         return 1
 
     with Session(motor) as bd:
-        from sqlalchemy import select
-        from app.models import Usuario
-        from app.security import hashear_contrasena
-
         existente = bd.scalar(select(Usuario).where(Usuario.usuario == datos.username))
         if existente:
             existente.nombre = datos.name

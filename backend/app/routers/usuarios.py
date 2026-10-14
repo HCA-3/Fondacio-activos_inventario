@@ -44,7 +44,7 @@ def crear(datos: UsuarioNuevo, bd: BD, admin: Admin) -> Usuario:
     if admin.usuario != "admin":
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Solo el usuario administrador principal ('admin') tiene permisos para crear nuevos usuarios",
+            "Solo el usuario administrador principal ('admin') puede crear nuevos usuarios",
         )
     try:
         usuario = servicio.crear_usuario(bd, datos, admin)
