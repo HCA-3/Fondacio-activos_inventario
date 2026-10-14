@@ -1,6 +1,7 @@
 /**
  * FONDACIO COLOMBIA - SISTEMA DE INVENTARIO
  * Módulo de Personalización Visual, Temas y Paletas de Color en Tiempo Real
+ * Sincronizado con la API /api/configuracion (FastAPI)
  */
 
 const COLOR_PRESETS = {
@@ -56,10 +57,15 @@ const COLOR_PRESETS = {
   }
 };
 
-function initCustomizerModule() {
-  // Aplicar tema guardado al cargar
-  const currentConfig = DB.getThemeConfig();
-  applyCustomColorsToDOM(currentConfig);
+async function initCustomizerModule() {
+  try {
+    // Aplicar tema guardado en el servidor al cargar
+    const currentConfig = await DB.getThemeConfig();
+    applyCustomColorsToDOM(currentConfig);
+    syncColorInputsWithConfig(currentConfig);
+  } catch (e) {
+    applyCustomColorsToDOM(DEFAULT_THEME_CONFIG);
+  }
 
   // Inicializar inputs del modal de personalización
   const primaryInput = document.getElementById('custom-primary-color');
@@ -69,35 +75,30 @@ function initCustomizerModule() {
   const accentInput = document.getElementById('custom-accent-color');
 
   if (primaryInput) {
-    primaryInput.value = currentConfig.primaryColor;
     primaryInput.addEventListener('input', (e) => {
       document.documentElement.style.setProperty('--primary-500', e.target.value);
     });
   }
 
   if (darkInput) {
-    darkInput.value = currentConfig.primaryDark;
     darkInput.addEventListener('input', (e) => {
       document.documentElement.style.setProperty('--primary-600', e.target.value);
     });
   }
 
   if (sidebarInput) {
-    sidebarInput.value = currentConfig.sidebarBg;
     sidebarInput.addEventListener('input', (e) => {
       document.documentElement.style.setProperty('--bg-sidebar', e.target.value);
     });
   }
 
   if (appBgInput) {
-    appBgInput.value = currentConfig.appBg;
     appBgInput.addEventListener('input', (e) => {
       document.documentElement.style.setProperty('--bg-app', e.target.value);
     });
   }
 
   if (accentInput) {
-    accentInput.value = currentConfig.accentColor;
     accentInput.addEventListener('input', (e) => {
       document.documentElement.style.setProperty('--accent-amber', e.target.value);
     });
@@ -141,17 +142,18 @@ function selectColorPreset(presetKey) {
 }
 
 function syncColorInputsWithConfig(config) {
+  if (!config) return;
   const p = document.getElementById('custom-primary-color');
   const d = document.getElementById('custom-dark-color');
   const s = document.getElementById('custom-sidebar-color');
   const a = document.getElementById('custom-appbg-color');
   const ac = document.getElementById('custom-accent-color');
 
-  if (p) p.value = config.primaryColor;
-  if (d) d.value = config.primaryDark;
-  if (s) s.value = config.sidebarBg;
-  if (a) a.value = config.appBg;
-  if (ac) ac.value = config.accentColor;
+  if (p && config.primaryColor) p.value = config.primaryColor;
+  if (d && config.primaryDark) d.value = config.primaryDark;
+  if (s && config.sidebarBg) s.value = config.sidebarBg;
+  if (a && config.appBg) a.value = config.appBg;
+  if (ac && config.accentColor) ac.value = config.accentColor;
 }
 
 function applyCustomColorsToDOM(config) {
@@ -175,7 +177,7 @@ function applyCustomColorsToDOM(config) {
   }
 }
 
-function saveCustomColors() {
+async function saveCustomColors() {
   const config = {
     primaryColor: document.getElementById('custom-primary-color')?.value || '#2e7d32',
     primaryDark: document.getElementById('custom-dark-color')?.value || '#1b5e20',
@@ -184,26 +186,38 @@ function saveCustomColors() {
     accentColor: document.getElementById('custom-accent-color')?.value || '#f59e0b'
   };
 
-  DB.saveThemeConfig(config);
-  applyCustomColorsToDOM(config);
-  closeModal('modal-customizer');
-  showToast('Paleta de colores personalizada guardada con éxito.', 'success');
-  renderDashboard(); // refrescar colores en gráficos
-}
-
-function resetDefaultColors() {
-  if (confirm('¿Restablecer los colores institucionales originales de Fondacio Colombia?')) {
-    const defaults = DB.resetThemeConfig();
-    applyCustomColorsToDOM(defaults);
-    syncColorInputsWithConfig(defaults);
+  try {
+    await DB.saveThemeConfig(config);
+    applyCustomColorsToDOM(config);
     closeModal('modal-customizer');
-    showToast('Colores restablecidos a la paleta institucional por defecto.', 'info');
+    showToast('Paleta de colores guardada globalmente en el servidor.', 'success');
     renderDashboard();
+  } catch (err) {
+    showToast(err.message, 'error');
   }
 }
 
-function openCustomizerModal() {
-  const config = DB.getThemeConfig();
-  syncColorInputsWithConfig(config);
-  openModal('modal-customizer');
+async function resetDefaultColors() {
+  if (confirm('¿Restablecer los colores institucionales originales de Fondacio Colombia?')) {
+    try {
+      await DB.saveThemeConfig(DEFAULT_THEME_CONFIG);
+      applyCustomColorsToDOM(DEFAULT_THEME_CONFIG);
+      syncColorInputsWithConfig(DEFAULT_THEME_CONFIG);
+      closeModal('modal-customizer');
+      showToast('Colores restablecidos a la paleta institucional por defecto.', 'info');
+      renderDashboard();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+}
+
+async function openCustomizerModal() {
+  try {
+    const config = await DB.getThemeConfig();
+    syncColorInputsWithConfig(config);
+    openModal('modal-customizer');
+  } catch (err) {
+    openModal('modal-customizer');
+  }
 }

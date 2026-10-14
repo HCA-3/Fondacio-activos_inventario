@@ -21,8 +21,8 @@
   <!-- QRCode.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- SheetJS (XLSX) para exportar inventario en Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Nota: La exportación de Excel ahora se genera directamente en el servidor FastAPI (/api/equipos/export.xlsx) -->
+
 
   <!-- Estilos CSS -->
   <link rel="stylesheet" href="css/styles.css">
@@ -85,8 +85,8 @@
         </a>
 
         <a class="nav-item" data-view="respaldo" id="nav-respaldo">
-          <i data-lucide="database-backup"></i>
-          <span>Respaldos y Datos</span>
+          <i data-lucide="database"></i>
+          <span>Base de Datos & Ajustes</span>
         </a>
 
         <a class="nav-item" href="https://www.fondaciocolombia.org" target="_blank" rel="noopener noreferrer">
@@ -134,7 +134,20 @@
             <i data-lucide="moon" id="theme-icon"></i>
           </button>
 
-          <button class="btn btn-primary" onclick="openNewAssetModal()">
+          <div class="user-topbar-profile" id="user-topbar-profile" title="Usuario autenticado">
+            <div class="user-avatar-circle">
+              <i data-lucide="user"></i>
+            </div>
+            <div class="user-topbar-info" onclick="navigateTo('respaldo')" title="Ver cuenta y cambiar contraseña" style="cursor: pointer;">
+              <span class="user-name" id="user-display-name">Usuario</span>
+              <span class="user-role-badge" id="user-display-role">Rol</span>
+            </div>
+            <button class="icon-button" id="btn-logout" title="Cerrar Sesión">
+              <i data-lucide="log-out"></i>
+            </button>
+          </div>
+
+          <button class="btn btn-primary admin-only" data-admin-only onclick="openNewAssetModal()">
             <i data-lucide="plus-circle"></i>
             <span>Nueva Hoja de Vida</span>
           </button>
@@ -253,7 +266,7 @@
             <div class="card-panel">
               <div class="card-panel-header">
                 <h3>🏢 Sedes de Fondacio Colombia</h3>
-                <button class="btn btn-sm btn-primary" onclick="openNewSedeModal()">
+                <button class="btn btn-sm btn-primary admin-only" data-admin-only onclick="openNewSedeModal()">
                   <i data-lucide="plus"></i> Sede
                 </button>
               </div>
@@ -323,7 +336,7 @@
                   <span>Exportar Excel Completo</span>
                 </button>
 
-                <button class="btn btn-primary btn-sm" onclick="openNewAssetModal()">
+                <button class="btn btn-primary btn-sm admin-only" data-admin-only onclick="openNewAssetModal()">
                   <i data-lucide="plus"></i>
                   <span>Nueva Hoja de Vida</span>
                 </button>
@@ -377,7 +390,7 @@
                 <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">Sedes y Espacios Operativos</h3>
                 <p style="font-size: 0.78rem; color: var(--text-secondary);">Registra nuevas sedes con su dirección física para asociar equipos de cómputo y generar hojas de vida.</p>
               </div>
-              <button class="btn btn-primary btn-sm" onclick="openNewSedeModal()">
+              <button class="btn btn-primary btn-sm admin-only" data-admin-only onclick="openNewSedeModal()">
                 <i data-lucide="plus-circle"></i>
                 <span>Registrar Nueva Sede</span>
               </button>
@@ -405,7 +418,7 @@
                 </button>
               </div>
 
-              <button class="btn btn-primary btn-sm" onclick="openNewLoanModal()">
+              <button class="btn btn-primary btn-sm admin-only" data-admin-only onclick="openNewLoanModal()">
                 <i data-lucide="handshake"></i>
                 <span>Nuevo Préstamo</span>
               </button>
@@ -436,7 +449,7 @@
             </div>
             <h3>No hay préstamos en esta categoría</h3>
             <p>Puedes registrar un nuevo préstamo de equipo asignando un custodio o voluntario.</p>
-            <button class="btn btn-primary btn-sm" onclick="openNewLoanModal()">Asignar Préstamo</button>
+            <button class="btn btn-primary btn-sm admin-only" data-admin-only onclick="openNewLoanModal()">Asignar Préstamo</button>
           </div>
         </section>
 
@@ -456,7 +469,7 @@
                 </button>
               </div>
 
-              <button class="btn btn-primary btn-sm" onclick="openNewMaintenanceModal()">
+              <button class="btn btn-primary btn-sm admin-only" data-admin-only onclick="openNewMaintenanceModal()">
                 <i data-lucide="wrench"></i>
                 <span>Registrar Mantenimiento</span>
               </button>
@@ -487,40 +500,35 @@
             </div>
             <h3>Sin registros de mantenimiento</h3>
             <p>Todos los equipos se encuentran en óptimas condiciones o no hay registros pendientes.</p>
-            <button class="btn btn-primary btn-sm" onclick="openNewMaintenanceModal()">Crear Registro</button>
+            <button class="btn btn-primary btn-sm admin-only" data-admin-only onclick="openNewMaintenanceModal()">Crear Registro</button>
           </div>
         </section>
 
-        <!-- VISTA 5: RESPALDO Y CONFIGURACIÓN -->
+        <!-- VISTA 5: BASE DE DATOS Y CONFIGURACIÓN -->
         <section class="view-section" id="view-respaldo">
           <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
 
             <div class="card-panel">
               <div class="card-panel-header">
-                <h3>💾 Copia de Seguridad y Restauración</h3>
+                <h3>💾 Servidor y Base de Datos Central</h3>
               </div>
               <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
-                Descarga una copia completa en archivo JSON de todas las hojas de vida de equipos de cómputo, sedes, préstamos y mantenimientos de Fondacio Colombia.
+                La aplicación está conectada a la base de datos central a través del backend FastAPI. Todos los registros, cambios, hojas de vida y actas se guardan en el servidor con respaldo transaccional y control de concurrencia.
               </p>
 
               <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <button class="btn btn-primary" id="btn-export-json">
-                  <i data-lucide="download"></i>
-                  <span>Descargar Respaldo Completo (JSON)</span>
+                <button class="btn btn-primary" id="btn-export-excel-server">
+                  <i data-lucide="file-spreadsheet"></i>
+                  <span>Descargar Inventario Oficial en Excel (4 Hojas)</span>
                 </button>
 
                 <div style="border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
-                  <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.4rem;">
-                    Restaurar Respaldo desde archivo:
-                  </label>
-                  <input type="file" id="file-import-json" accept=".json" class="form-control" />
-                </div>
-
-                <div style="border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
-                  <button class="btn btn-outline-danger btn-sm" id="btn-reset-data">
-                    <i data-lucide="rotate-ccw"></i>
-                    <span>Restablecer Datos de Demostración Iniciales</span>
-                  </button>
+                  <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.4rem;">
+                    🛡️ Estado de la Conexión:
+                  </span>
+                  <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4;">
+                    Sesión autenticada por cookie segura HTTP-only. Los datos ya no dependen del almacenamiento local del navegador (LocalStorage).
+                  </p>
                 </div>
               </div>
             </div>
@@ -532,26 +540,112 @@
               <div class="asset-card-specs-list" style="margin: 0; padding: 1rem; font-size: 0.85rem;">
                 <div class="spec-line">
                   <span>Organización:</span>
-                  <strong>Fundación Fondacio Colombia</strong>
+                  <strong id="settings-org-name">Fundación Fondacio Colombia</strong>
                 </div>
                 <div class="spec-line">
                   <span>NIT:</span>
-                  <span>900.384.129-5</span>
+                  <span id="settings-nit">900.384.129-5</span>
+                </div>
+                <div class="spec-line">
+                  <span>Correo:</span>
+                  <span id="settings-email">contacto@fondacio-co.org</span>
                 </div>
                 <div class="spec-line">
                   <span>Sitio Web:</span>
-                  <span>fondaciocolombia.org</span>
+                  <span id="settings-website">https://www.fondaciocolombia.org</span>
                 </div>
                 <div class="spec-line">
-                  <span>Personalización:</span>
-                  <span style="color: var(--primary-600); font-weight: 700;">Paletas y Sedes Dinámicas Activas</span>
+                  <span>Infraestructura:</span>
+                  <span style="color: var(--primary-600); font-weight: 700;">FastAPI • Base de Datos Central</span>
                 </div>
               </div>
 
               <div style="margin-top: 1.25rem; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
                 <p>
-                  🌱 Este sistema permite registrar cualquier sede u oficina de Fondacio, configurar colores corporativos favoritos y llevar la Hoja de Vida técnica de cada equipo.
+                  🌱 Sistema de gestión de activos de hardware para sedes Altos del Cabo, YLDC Potosí y Administrativa de la Fundación Fondacio Colombia.
                 </p>
+              </div>
+            </div>
+
+            <!-- TARJETA: SEGURIDAD Y CAMBIO DE CONTRASEÑA -->
+            <div class="card-panel col-span-2" style="margin-top: 1rem; border-top: 3px solid var(--primary-500);">
+              <div class="card-panel-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                <h3 style="display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+                  <i data-lucide="key-round" style="color: var(--primary-500);"></i>
+                  <span>Seguridad de la Cuenta & Cambio de Contraseña</span>
+                </h3>
+                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #059669; font-weight: 700; font-size: 0.78rem; padding: 4px 10px; border-radius: 999px;">
+                  Usuario actual: <strong id="settings-user-display">admin</strong>
+                </span>
+              </div>
+
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+                Cambia la contraseña de tu cuenta activa en el servidor. La nueva contraseña debe tener un mínimo de <strong>8 caracteres</strong>.
+              </p>
+
+              <div id="pwd-change-alert" style="display: none; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; font-weight: 600;"></div>
+
+              <form id="form-change-password" style="max-width: 650px;">
+                <div class="form-grid" style="margin-bottom: 1rem;">
+                  <div class="form-group">
+                    <label for="setting-new-password">Nueva Contraseña <span class="required">*</span></label>
+                    <input type="password" id="setting-new-password" class="form-control" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required minlength="8" />
+                  </div>
+                  <div class="form-group">
+                    <label for="setting-confirm-password">Confirmar Nueva Contraseña <span class="required">*</span></label>
+                    <input type="password" id="setting-confirm-password" class="form-control" placeholder="Repite la nueva contraseña" autocomplete="new-password" required minlength="8" />
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                  <button type="submit" id="btn-save-password" class="btn btn-primary">
+                    <i data-lucide="lock"></i>
+                    <span>Actualizar Contraseña</span>
+                  </button>
+                  <span style="font-size: 0.78rem; color: var(--text-secondary);">
+                    🔒 Se cifrará de forma segura en la base de datos central (Argon2).
+                  </span>
+                </div>
+              </form>
+            </div>
+
+            <!-- TARJETA: GESTIÓN DE USUARIOS (SOLO ADMIN) -->
+            <div class="card-panel col-span-2" id="panel-user-management" style="margin-top: 1rem; border-top: 3px solid var(--primary-600); display: none;">
+              <div class="card-panel-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                  <h3 style="display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+                    <i data-lucide="users" style="color: var(--primary-500);"></i>
+                    <span>Gestión de Usuarios del Sistema</span>
+                  </h3>
+                  <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0.25rem 0 0;">
+                    Solo el usuario <strong>admin</strong> tiene permisos para crear y habilitar nuevas cuentas.
+                  </p>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="openNewUserModal()">
+                  <i data-lucide="user-plus"></i>
+                  <span>Crear Nuevo Usuario</span>
+                </button>
+              </div>
+
+              <!-- Tabla de Usuarios -->
+              <div class="table-responsive" style="margin-top: 1rem; overflow-x: auto;">
+                <table class="table" style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
+                  <thead>
+                    <tr style="border-bottom: 2px solid var(--border-subtle); text-align: left;">
+                      <th style="padding: 8px 12px;">Usuario</th>
+                      <th style="padding: 8px 12px;">Nombre Completo</th>
+                      <th style="padding: 8px 12px;">Rol</th>
+                      <th style="padding: 8px 12px;">Estado</th>
+                      <th style="padding: 8px 12px;">Fecha de Registro</th>
+                      <th style="padding: 8px 12px; text-align: right;">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-table-body">
+                    <tr>
+                      <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">Cargando usuarios...</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -630,7 +724,7 @@
         <button type="button" class="btn btn-outline-danger btn-sm" onclick="resetDefaultColors()">
           <i data-lucide="rotate-ccw"></i> Restablecer Defecto
         </button>
-        <button type="button" class="btn btn-primary" onclick="saveCustomColors()">
+        <button type="button" class="btn btn-primary admin-only" data-admin-only onclick="saveCustomColors()">
           <i data-lucide="check"></i> Guardar Colores
         </button>
       </div>
@@ -1397,6 +1491,94 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRAR NUEVO USUARIO (SOLO ADMIN) -->
+  <div class="modal-overlay" id="modal-user-form">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="user-plus" style="color: var(--primary-500);"></i>
+          <span>Registrar Nuevo Usuario</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-user-form')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="form-new-user">
+        <div class="modal-body">
+          <div id="new-user-error-alert" style="display: none; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; font-weight: 600; background: rgba(239, 68, 68, 0.15); color: #dc2626;"></div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="new-user-username">Nombre de Usuario (Username) <span class="required">*</span></label>
+              <input type="text" id="new-user-username" class="form-control" placeholder="Ej: maria.gomez" required minlength="3" maxlength="50" pattern="^[a-zA-Z0-9._-]+$" />
+              <small style="font-size: 0.72rem; color: var(--text-secondary);">De 3 a 50 caracteres (letras, números, puntos, guiones)</small>
+            </div>
+
+            <div class="form-group">
+              <label for="new-user-role">Rol de Acceso <span class="required">*</span></label>
+              <select id="new-user-role" class="form-control" required>
+                <option value="consulta" selected>Consulta (Solo lectura y reportes)</option>
+                <option value="admin">Administrador (Control total)</option>
+              </select>
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="new-user-name">Nombre Completo <span class="required">*</span></label>
+              <input type="text" id="new-user-name" class="form-control" placeholder="Ej: María Gómez Rodríguez" required maxlength="100" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="new-user-password">Contraseña Inicial <span class="required">*</span></label>
+              <input type="password" id="new-user-password" class="form-control" placeholder="Mínimo 8 caracteres" required minlength="8" autocomplete="new-password" />
+              <small style="font-size: 0.72rem; color: var(--text-secondary);">El usuario podrá cambiar su contraseña posteriormente desde Configuración.</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-user-form')">Cancelar</button>
+          <button type="submit" id="btn-submit-new-user" class="btn btn-primary">
+            <i data-lucide="check"></i>
+            <span>Crear Usuario</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: LOGIN / INICIO DE SESIÓN OBLIGATORIO -->
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="brand-logo-badge" style="width: 52px; height: 52px; font-size: 1.5rem; margin: 0 auto 0.75rem;">F</div>
+        <h2>Fondacio Colombia</h2>
+        <p>Sistema de Inventario de Hardware y Hojas de Vida</p>
+      </div>
+
+      <div id="login-error-msg" class="login-error-alert" style="display: none;"></div>
+
+      <form id="form-login">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="login-username">Usuario</label>
+          <input type="text" id="login-username" class="form-control" placeholder="Ej: admin" autocomplete="username" required />
+        </div>
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label for="login-password">Contraseña</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" required />
+        </div>
+        <button type="submit" id="login-submit-btn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.75rem;">
+          <i data-lucide="log-in"></i>
+          <span>Iniciar Sesión</span>
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <span>Fondacio Colombia • Sedes YLDC Potosí, Altos del Cabo y Administrativa</span>
+      </div>
     </div>
   </div>
 

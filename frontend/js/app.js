@@ -1,15 +1,229 @@
 /**
  * FONDACIO COLOMBIA - SISTEMA DE INVENTARIO
- * Controlador Principal de la Aplicación (SPA Router, Modales, Tema, Respaldos)
+ * Controlador Principal de la Aplicación (Autenticación, Sesión, SPA Router, Modales, Tema)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  initApp();
+  setupAuthEventListeners();
+  checkAuthAndInit();
 });
 
-function initApp() {
-  // Inicializar Tema y Personalizador
+// --- AUTENTICACIÓN Y CONTROL DE SESIÓN ---
+
+function setupAuthEventListeners() {
+  const loginForm = document.getElementById('form-login');
+  if (loginForm) {
+    loginForm.addEventListener('submit', handleLoginFormSubmit);
+  }
+
+  const logoutBtn = document.getElementById('btn-logout');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', handleLogout);
+  }
+}
+
+async function checkAuthAndInit() {
+  // Inicializar Tema visual por defecto
   initTheme();
+
+  try {
+    const user = await DB.getMe();
+    setupAuthenticatedUser(user);
+    ocultarLogin();
+    initApp();
+  } catch (err) {
+    // Si no hay sesión o responde 401, mostrar la pantalla de login
+    mostrarLogin();
+  }
+}
+
+function mostrarLogin(errorMessage = '') {
+  const overlay = document.getElementById('login-overlay');
+  const errorBox = document.getElementById('login-error-msg');
+  if (overlay) {
+    overlay.style.display = 'flex';
+  }
+  if (errorBox) {
+    if (errorMessage) {
+      errorBox.textContent = errorMessage;
+      errorBox.style.display = 'block';
+    } else {
+      errorBox.textContent = '';
+      errorBox.style.display = 'none';
+    }
+  }
+  const userInput = document.getElementById('login-username');
+  if (userInput) {
+    userInput.focus();
+  }
+}
+
+function ocultarLogin() {
+  const overlay = document.getElementById('login-overlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+  }
+}
+
+function setupAuthenticatedUser(user) {
+  if (!user) return;
+  DB.setCurrentUser(user);
+
+  const nameEl = document.getElementById('user-display-name');
+  const roleEl = document.getElementById('user-display-role');
+  const settingsUserEl = document.getElementById('settings-user-display');
+  if (nameEl) nameEl.textContent = user.name || user.username;
+  if (roleEl) roleEl.textContent = user.role === 'admin' ? 'Administrador' : 'Consulta';
+  if (settingsUserEl) settingsUserEl.textContent = `${user.username} (${user.role === 'admin' ? 'Administrador' : 'Consulta'})`;
+
+  // Control de interfaz por roles
+  if (user.role === 'consulta') {
+    document.body.classList.add('role-consulta');
+  } else {
+    document.body.classList.remove('role-consulta');
+  }
+}
+
+async function handleChangePasswordSubmit(e) {
+  e.preventDefault();
+  const newPassInput = document.getElementById('setting-new-password');
+  const confirmPassInput = document.getElementById('setting-confirm-password');
+  const alertEl = document.getElementById('pwd-change-alert');
+  const submitBtn = document.getElementById('btn-save-password');
+
+  const newPass = newPassInput ? newPassInput.value : '';
+  const confirmPass = confirmPassInput ? confirmPassInput.value : '';
+
+  if (alertEl) {
+    alertEl.style.display = 'none';
+  }
+
+  if (!newPass || newPass.length < 8) {
+    const msg = 'La nueva contraseña debe tener al menos 8 caracteres.';
+    showToast(msg, 'warning');
+    if (alertEl) {
+      alertEl.style.background = 'rgba(239, 68, 68, 0.15)';
+      alertEl.style.color = '#dc2626';
+      alertEl.textContent = msg;
+      alertEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (newPass !== confirmPass) {
+    const msg = 'Las contraseñas no coinciden. Por favor verifica.';
+    showToast(msg, 'warning');
+    if (alertEl) {
+      alertEl.style.background = 'rgba(239, 68, 68, 0.15)';
+      alertEl.style.color = '#dc2626';
+      alertEl.textContent = msg;
+      alertEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Actualizando...</span>';
+  }
+
+  try {
+    const res = await DB.changePassword(newPass);
+    const msg = (res && res.mensaje) ? res.mensaje : '✓ Contraseña actualizada exitosamente en el servidor.';
+    showToast(msg, 'success');
+    if (alertEl) {
+      alertEl.style.background = 'rgba(16, 185, 129, 0.15)';
+      alertEl.style.color = '#059669';
+      alertEl.textContent = msg;
+      alertEl.style.display = 'block';
+    }
+    const form = document.getElementById('form-change-password');
+    if (form) form.reset();
+  } catch (err) {
+    const errorMsg = 'Error al cambiar contraseña: ' + (err.message || 'Error desconocido');
+    showToast(errorMsg, 'error');
+    if (alertEl) {
+      alertEl.style.background = 'rgba(239, 68, 68, 0.15)';
+      alertEl.style.color = '#dc2626';
+      alertEl.textContent = errorMsg;
+      alertEl.style.display = 'block';
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i data-lucide="lock"></i><span>Actualizar Contraseña</span>';
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+}
+
+async function handleLoginFormSubmit(e) {
+  e.preventDefault();
+  const userInput = document.getElementById('login-username');
+  const passInput = document.getElementById('login-password');
+  const submitBtn = document.getElementById('login-submit-btn');
+  const errorBox = document.getElementById('login-error-msg');
+
+  const username = userInput ? userInput.value.trim() : '';
+  const password = passInput ? passInput.value : '';
+
+  if (!username || !password) {
+    mostrarLogin('Por favor ingresa usuario y contraseña.');
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Verificando...';
+  }
+  if (errorBox) {
+    errorBox.style.display = 'none';
+  }
+
+  try {
+    const user = await DB.login(username, password);
+    setupAuthenticatedUser(user);
+    ocultarLogin();
+    if (passInput) passInput.value = '';
+    initApp();
+    showToast(`Bienvenido/a, ${user.name || user.username}`, 'success');
+  } catch (err) {
+    mostrarLogin(err.message || 'Error de autenticación');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Iniciar Sesión';
+    }
+  }
+}
+
+async function handleLogout() {
+  if (!confirm('¿Deseas cerrar tu sesión actual en Fondacio Colombia?')) {
+    return;
+  }
+  try {
+    await DB.logout();
+  } catch (e) {
+    console.warn('Logout:', e.message);
+  }
+  document.body.classList.remove('role-consulta');
+  mostrarLogin('Sesión cerrada correctamente.');
+  showToast('Has cerrado sesión.', 'info');
+}
+
+// --- INICIALIZACIÓN DE LA APLICACIÓN ---
+
+let appInitialized = false;
+
+function initApp() {
+  if (appInitialized) {
+    // Si ya fue inicializada, refrescar vista actual
+    navigateTo('dashboard');
+    return;
+  }
+  appInitialized = true;
+
+  // Inicializar Personalizador
   initCustomizerModule();
 
   // Inicializar Navegación
@@ -120,12 +334,14 @@ function navigateTo(viewId) {
     prestamos: { title: 'Asignaciones y Préstamos', sub: 'Control de custodios, beneficiarios y actas de entrega' },
     mantenimiento: { title: 'Mantenimientos y Soporte Técnico', sub: 'Bitácora técnica, servicios preventivos y correctivos' },
     diagnostico: { title: 'Diagnóstico de Software, Licencias y Tablets', sub: 'Auditoría de sistemas operativos, activación, parches y mitigación de obsolescencia' },
-    respaldo: { title: 'Respaldos y Configuración', sub: 'Copia de seguridad, exportación y restauración de datos' }
+    respaldo: { title: 'Base de Datos y Configuración', sub: 'Sincronización con el servidor central, exportación oficial y datos de la fundación' }
   };
 
   const meta = titleMap[viewId] || titleMap.dashboard;
-  document.getElementById('header-title').textContent = meta.title;
-  document.getElementById('header-subtitle').textContent = meta.sub;
+  const headerTitle = document.getElementById('header-title');
+  const headerSub = document.getElementById('header-subtitle');
+  if (headerTitle) headerTitle.textContent = meta.title;
+  if (headerSub) headerSub.textContent = meta.sub;
 
   // Renderizar contenido según la vista
   if (viewId === 'dashboard') {
@@ -140,6 +356,8 @@ function navigateTo(viewId) {
     renderMaintenanceList();
   } else if (viewId === 'diagnostico') {
     renderDiagnosticoView();
+  } else if (viewId === 'respaldo') {
+    renderSettingsView();
   }
 
   if (window.lucide) {
@@ -179,7 +397,9 @@ function initTheme() {
       document.documentElement.setAttribute('data-theme', nextTheme);
       localStorage.setItem('fondacio_theme', nextTheme);
       updateThemeIcon(nextTheme);
-      renderDashboard(); // refrescar colores de charts
+      if (typeof renderDashboard === 'function') {
+        renderDashboard();
+      }
     });
   }
 }
@@ -218,55 +438,190 @@ function showToast(message, type = 'info') {
   }, 3500);
 }
 
-// --- RESPALDO, IMPORTACIÓN Y EXPORTACIÓN ---
+// --- CONFIGURACIÓN Y EXPORTACIÓN OFICIAL ---
 function initBackupModule() {
-  const btnExportJson = document.getElementById('btn-export-json');
-  const fileImportInput = document.getElementById('file-import-json');
-  const btnResetData = document.getElementById('btn-reset-data');
-
-  if (btnExportJson) {
-    btnExportJson.addEventListener('click', () => {
-      const json = DB.exportJSON();
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Respaldo_Inventario_Fondacio_${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      showToast('Copia de respaldo JSON generada y descargada.', 'success');
+  const btnExportExcel = document.getElementById('btn-export-excel-server');
+  if (btnExportExcel) {
+    btnExportExcel.addEventListener('click', () => {
+      exportInventoryToExcel();
     });
   }
 
-  if (fileImportInput) {
-    fileImportInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const res = DB.importJSON(event.target.result);
-        if (res.success) {
-          showToast(`Datos restaurados con éxito (${res.count} activos).`, 'success');
-          renderDashboard();
-          applyInventoryFilters();
-        } else {
-          showToast(`Error al importar: ${res.message}`, 'error');
-        }
-      };
-      reader.readAsText(file);
-      fileImportInput.value = '';
-    });
+  const formChangePassword = document.getElementById('form-change-password');
+  if (formChangePassword) {
+    formChangePassword.addEventListener('submit', handleChangePasswordSubmit);
   }
 
-  if (btnResetData) {
-    btnResetData.addEventListener('click', () => {
-      if (confirm('⚠️ ¿Estás seguro de que deseas restablecer la base de datos a los valores iniciales de demostración de Fondacio Colombia? Todos los cambios manuales se sobreescribirán.')) {
-        DB.resetToInitial();
-        showToast('Base de datos restablecida a los valores iniciales de Fondacio.', 'info');
-        renderDashboard();
-        applyInventoryFilters();
+  const formNewUser = document.getElementById('form-new-user');
+  if (formNewUser) {
+    formNewUser.addEventListener('submit', handleSaveNewUserForm);
+  }
+}
+
+async function renderSettingsView() {
+  try {
+    const user = DB.currentUser;
+    const settingsUserEl = document.getElementById('settings-user-display');
+    if (user && settingsUserEl) {
+      settingsUserEl.textContent = `${user.username} (${user.role === 'admin' ? 'Administrador' : 'Consulta'})`;
+    }
+
+    // El panel de gestión de usuarios solo se muestra al usuario 'admin'
+    const userPanel = document.getElementById('panel-user-management');
+    if (userPanel) {
+      if (user && user.username === 'admin') {
+        userPanel.style.display = 'block';
+        renderUsersTable();
+      } else {
+        userPanel.style.display = 'none';
       }
-    });
+    }
+
+    const settings = await DB.getSettings();
+    const orgNameEl = document.getElementById('settings-org-name');
+    const nitEl = document.getElementById('settings-nit');
+    const emailEl = document.getElementById('settings-email');
+    const webEl = document.getElementById('settings-website');
+
+    if (orgNameEl) orgNameEl.textContent = settings.orgName || 'Fundación Fondacio Colombia';
+    if (nitEl) nitEl.textContent = settings.nit || '900.384.129-5';
+    if (emailEl) emailEl.textContent = settings.email || 'contacto@fondacio-co.org';
+    if (webEl) webEl.textContent = settings.website || 'fondaciocolombia.org';
+  } catch (e) {
+    console.warn('Error al cargar ajustes institucionales:', e);
+  }
+}
+
+// --- GESTIÓN DE USUARIOS (SOLO USUARIO ADMIN) ---
+function openNewUserModal() {
+  const form = document.getElementById('form-new-user');
+  if (form) form.reset();
+  const alertEl = document.getElementById('new-user-error-alert');
+  if (alertEl) {
+    alertEl.textContent = '';
+    alertEl.style.display = 'none';
+  }
+  openModal('modal-user-form');
+}
+
+async function handleSaveNewUserForm(e) {
+  e.preventDefault();
+  const userInput = document.getElementById('new-user-username');
+  const nameInput = document.getElementById('new-user-name');
+  const roleInput = document.getElementById('new-user-role');
+  const passInput = document.getElementById('new-user-password');
+  const alertEl = document.getElementById('new-user-error-alert');
+  const submitBtn = document.getElementById('btn-submit-new-user');
+
+  const username = userInput ? userInput.value.trim().toLowerCase() : '';
+  const name = nameInput ? nameInput.value.trim() : '';
+  const role = roleInput ? roleInput.value : 'consulta';
+  const password = passInput ? passInput.value : '';
+
+  if (!username || !name || !password) {
+    if (alertEl) {
+      alertEl.textContent = 'Por favor completa todos los campos obligatorios.';
+      alertEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (password.length < 8) {
+    if (alertEl) {
+      alertEl.textContent = 'La contraseña debe tener al menos 8 caracteres.';
+      alertEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Creando usuario...</span>';
+  }
+
+  try {
+    await DB.createUser({ username, name, role, password });
+    closeModal('modal-user-form');
+    showToast(`Usuario '${username}' creado con éxito.`, 'success');
+    renderUsersTable();
+  } catch (err) {
+    if (alertEl) {
+      alertEl.textContent = err.message || 'Error al crear el usuario.';
+      alertEl.style.display = 'block';
+    }
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i data-lucide="check"></i><span>Crear Usuario</span>';
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+}
+
+async function renderUsersTable() {
+  const tbody = document.getElementById('users-table-body');
+  if (!tbody) return;
+
+  try {
+    const res = await DB.getUsers(100, 0);
+    const users = res.items || [];
+
+    if (users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">No hay usuarios registrados.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = users.map(u => {
+      const isCurrent = DB.currentUser && DB.currentUser.username === u.username;
+      const isAdminUser = u.username === 'admin';
+      const roleBadge = u.role === 'admin'
+        ? '<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #2563eb; font-weight: 700; padding: 2px 8px; border-radius: 999px;">Administrador</span>'
+        : '<span class="badge" style="background: rgba(107, 114, 128, 0.15); color: #4b5563; font-weight: 600; padding: 2px 8px; border-radius: 999px;">Consulta</span>';
+
+      const statusBadge = u.active
+        ? '<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #059669; font-weight: 700; padding: 2px 8px; border-radius: 999px;">● Activo</span>'
+        : '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #dc2626; font-weight: 700; padding: 2px 8px; border-radius: 999px;">○ Inactivo</span>';
+
+      const dateStr = u.createdAt ? new Date(u.createdAt).toLocaleDateString('es-CO') : '-';
+
+      const toggleAction = (isCurrent || isAdminUser)
+        ? '<span style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic;">Principal</span>'
+        : `<button type="button" class="btn btn-sm ${u.active ? 'btn-outline-danger' : 'btn-secondary'}" onclick="toggleUserStatus('${u.id}', '${escapeHtml(u.username)}', ${u.active})" style="font-size: 0.75rem; padding: 2px 8px;">
+            ${u.active ? 'Desactivar' : 'Activar'}
+          </button>`;
+
+      return `
+        <tr style="border-bottom: 1px solid var(--border-subtle);">
+          <td style="padding: 10px 12px; font-weight: 700;">
+            ${escapeHtml(u.username)} ${isCurrent ? '<span style="font-size: 0.7rem; color: var(--primary-600); font-weight: 600;">(Tú)</span>' : ''}
+          </td>
+          <td style="padding: 10px 12px;">${escapeHtml(u.name || '-')}</td>
+          <td style="padding: 10px 12px;">${roleBadge}</td>
+          <td style="padding: 10px 12px;">${statusBadge}</td>
+          <td style="padding: 10px 12px; color: var(--text-secondary);">${dateStr}</td>
+          <td style="padding: 10px 12px; text-align: right;">${toggleAction}</td>
+        </tr>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #dc2626; padding: 1.5rem;">Error al cargar usuarios: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function toggleUserStatus(userId, username, currentActive) {
+  const actionText = currentActive ? 'desactivar' : 'activar';
+  if (!confirm(`¿Estás seguro de ${actionText} la cuenta del usuario '${username}'?`)) {
+    return;
+  }
+
+  try {
+    await DB.updateUser(userId, { active: !currentActive });
+    showToast(`Usuario '${username}' ${currentActive ? 'desactivado' : 'activado'} correctamente.`, 'info');
+    renderUsersTable();
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
   }
 }

@@ -1,6 +1,6 @@
 /**
  * FONDACIO COLOMBIA - SISTEMA DE INVENTARIO
- * Módulo de Dashboard: Analítica, Métricas y Gráficos
+ * Módulo de Dashboard: Analítica, Métricas y Gráficos conectadas a la API
  */
 
 let chartSedesInstance = null;
@@ -14,47 +14,51 @@ function formatCurrency(amount) {
   }).format(amount);
 }
 
-function renderDashboard() {
-  const stats = DB.getDashboardStats();
+async function renderDashboard() {
+  try {
+    const stats = await DB.getDashboardStats();
 
-  // Actualizar contadores numéricos
-  const elTotal = document.getElementById('dash-total-assets');
-  const elOperativos = document.getElementById('dash-operativos-assets');
-  const elPrestados = document.getElementById('dash-prestados-assets');
-  const elMaint = document.getElementById('dash-maint-assets');
-  const elValue = document.getElementById('dash-total-value');
+    // Actualizar contadores numéricos
+    const elTotal = document.getElementById('dash-total-assets');
+    const elOperativos = document.getElementById('dash-operativos-assets');
+    const elPrestados = document.getElementById('dash-prestados-assets');
+    const elMaint = document.getElementById('dash-maint-assets');
+    const elValue = document.getElementById('dash-total-value');
 
-  if (elTotal) elTotal.textContent = stats.total;
-  if (elOperativos) {
-    const pct = stats.total > 0 ? Math.round((stats.operativos / stats.total) * 100) : 0;
-    elOperativos.textContent = `${stats.operativos} (${pct}%)`;
+    if (elTotal) elTotal.textContent = stats.total;
+    if (elOperativos) {
+      const pct = stats.total > 0 ? Math.round((stats.operativos / stats.total) * 100) : 0;
+      elOperativos.textContent = `${stats.operativos} (${pct}%)`;
+    }
+    if (elPrestados) elPrestados.textContent = stats.prestados;
+    if (elMaint) elMaint.textContent = stats.mantenimiento;
+    if (elValue) elValue.textContent = formatCurrency(stats.totalValue || 0);
+
+    // Actualizar badges de menú lateral
+    const badgeInv = document.getElementById('badge-count-inventory');
+    const badgeLoans = document.getElementById('badge-count-loans');
+    const badgeMaint = document.getElementById('badge-count-maint');
+    if (badgeInv) badgeInv.textContent = stats.total;
+    if (badgeLoans) badgeLoans.textContent = stats.activeLoansCount;
+    if (badgeMaint) badgeMaint.textContent = stats.pendingMaintCount;
+
+    // Renderizar gráficos
+    renderCharts(stats);
+
+    // Renderizar resumen de sedes
+    await renderSedesSummary(stats);
+
+    // Renderizar actividades / alertas recientes
+    await renderRecentActivities();
+  } catch (err) {
+    console.error('Error al renderizar Dashboard:', err);
   }
-  if (elPrestados) elPrestados.textContent = stats.prestados;
-  if (elMaint) elMaint.textContent = stats.mantenimiento;
-  if (elValue) elValue.textContent = formatCurrency(stats.totalValue);
-
-  // Actualizar badges de menú lateral
-  const badgeInv = document.getElementById('badge-count-inventory');
-  const badgeLoans = document.getElementById('badge-count-loans');
-  const badgeMaint = document.getElementById('badge-count-maint');
-  if (badgeInv) badgeInv.textContent = stats.total;
-  if (badgeLoans) badgeLoans.textContent = stats.activeLoansCount;
-  if (badgeMaint) badgeMaint.textContent = stats.pendingMaintCount;
-
-  // Renderizar gráficos
-  renderCharts(stats);
-
-  // Renderizar resumen de sedes
-  renderSedesSummary(stats);
-
-  // Renderizar actividades / alertas recientes
-  renderRecentActivities();
 }
 
 function renderCharts(stats) {
   // Gráfico 1: Distribución por Sede
   const ctxSedes = document.getElementById('chartSedes');
-  if (ctxSedes) {
+  if (ctxSedes && stats.bySede) {
     if (chartSedesInstance) chartSedesInstance.destroy();
 
     const sedeLabels = Object.keys(stats.bySede).filter(k => stats.bySede[k] > 0);
@@ -63,9 +67,9 @@ function renderCharts(stats) {
     chartSedesInstance = new Chart(ctxSedes, {
       type: 'doughnut',
       data: {
-        labels: sedeLabels,
+        labels: sedeLabels.length > 0 ? sedeLabels : ['Sin equipos'],
         datasets: [{
-          data: sedeData,
+          data: sedeData.length > 0 ? sedeData : [1],
           backgroundColor: [
             '#2e7d32', // Fondacio Green
             '#f59e0b', // Amber/Ecology
@@ -96,7 +100,7 @@ function renderCharts(stats) {
 
   // Gráfico 2: Categorías de Hardware
   const ctxCategories = document.getElementById('chartCategories');
-  if (ctxCategories) {
+  if (ctxCategories && stats.byCategory) {
     if (chartCategoriesInstance) chartCategoriesInstance.destroy();
 
     const catLabels = Object.keys(stats.byCategory).filter(k => stats.byCategory[k] > 0);
@@ -145,14 +149,14 @@ function renderCharts(stats) {
   }
 }
 
-function renderSedesSummary(stats) {
+async function renderSedesSummary(stats) {
   const container = document.getElementById('dashboard-sedes-list');
   if (!container) return;
 
-  const sedes = DB.getSedes();
+  const sedes = await DB.getSedes();
 
   container.innerHTML = sedes.map(sede => {
-    const totalInSede = stats.bySede[sede.name] || 0;
+    const totalInSede = (stats && stats.bySede) ? (stats.bySede[sede.name] || 0) : 0;
     return `
       <div class="sede-card">
         <div class="sede-card-top">
@@ -176,45 +180,53 @@ function renderSedesSummary(stats) {
   }).join('');
 }
 
-function renderRecentActivities() {
+async function renderRecentActivities() {
   const container = document.getElementById('dashboard-activities-list');
   if (!container) return;
 
-  const loans = DB.getLoans('activo');
-  const maint = DB.getMaintenances('en_progreso').concat(DB.getMaintenances('programado'));
-  const recentAssets = DB.getAssets().slice(0, 3);
-
   let items = [];
 
-  maint.forEach(m => {
-    items.push(`
-      <div class="activity-item" style="border-left-color: var(--accent-amber);">
-        <div class="activity-icon" style="color: var(--accent-amber);">
-          <i data-lucide="wrench"></i>
-        </div>
-        <div class="activity-content">
-          <h4>Mantenimiento en curso: ${m.assetName}</h4>
-          <p>${m.description || 'Revisión técnica'} • Responsable: ${m.technician || 'Soporte'}</p>
-          <div class="activity-time">Código: ${m.assetCode}</div>
-        </div>
-      </div>
-    `);
-  });
+  try {
+    const [loans, inProg, prog] = await Promise.all([
+      DB.getLoans('activo'),
+      api('/api/mantenimientos?estado=en_progreso&limit=5'),
+      api('/api/mantenimientos?estado=programado&limit=5')
+    ]);
 
-  loans.forEach(l => {
-    items.push(`
-      <div class="activity-item" style="border-left-color: var(--secondary-500);">
-        <div class="activity-icon" style="color: var(--secondary-500);">
-          <i data-lucide="handshake"></i>
+    const maint = [...(inProg.items || []), ...(prog.items || [])];
+
+    maint.forEach(m => {
+      items.push(`
+        <div class="activity-item" style="border-left-color: var(--accent-amber);">
+          <div class="activity-icon" style="color: var(--accent-amber);">
+            <i data-lucide="wrench"></i>
+          </div>
+          <div class="activity-content">
+            <h4>Mantenimiento ${m.status === 'en_progreso' ? 'en curso' : 'programado'}: ${escapeHtml(m.assetName)}</h4>
+            <p>${escapeHtml(m.description || 'Revisión técnica')} • Técnico: ${escapeHtml(m.technician || 'Soporte')}</p>
+            <div class="activity-time">Código: ${escapeHtml(m.assetCode)}</div>
+          </div>
         </div>
-        <div class="activity-content">
-          <h4>Préstamo activo: ${l.assetName}</h4>
-          <p>Custodio: <strong>${l.borrowerName}</strong> (${l.borrowerRole}) • Devolución: ${l.expectedReturnDate}</p>
-          <div class="activity-time">Sede: ${l.sede}</div>
+      `);
+    });
+
+    loans.forEach(l => {
+      items.push(`
+        <div class="activity-item" style="border-left-color: var(--secondary-500);">
+          <div class="activity-icon" style="color: var(--secondary-500);">
+            <i data-lucide="handshake"></i>
+          </div>
+          <div class="activity-content">
+            <h4>Préstamo activo: ${escapeHtml(l.assetName)}</h4>
+            <p>Custodio: <strong>${escapeHtml(l.borrowerName)}</strong> (${escapeHtml(l.borrowerRole || 'Personal')}) • Devolución: ${escapeHtml(l.expectedReturnDate || 'Sin fecha')}</p>
+            <div class="activity-time">Sede: ${escapeHtml(l.sede)}</div>
+          </div>
         </div>
-      </div>
-    `);
-  });
+      `);
+    });
+  } catch (err) {
+    console.warn('Error al cargar actividades recientes:', err);
+  }
 
   if (items.length === 0) {
     items.push(`

@@ -101,6 +101,7 @@ async function api(ruta, { method = 'GET', body } = {}) {
 |---|---|---|
 | Iniciar sesión | `POST /api/auth/login` con `{username, password}` | 200 con el usuario |
 | Usuario actual | `GET /api/auth/me` | 200 con el usuario, o 401 |
+| Cambiar mi contraseña | `POST /api/auth/contrasena` con `{password}` | 200 con `{"mensaje": "..."}` |
 | Cerrar sesión | `POST /api/auth/logout` | 204 |
 
 El usuario tiene esta forma:
@@ -164,11 +165,12 @@ Reglas:
 
 - `username`: de 3 a 50 caracteres; letras, números, punto, guion y guion bajo.
 - `password`: mínimo 8 caracteres.
+- Solo el usuario administrador principal (`admin`) tiene autorización para crear nuevos usuarios (403 para cualquier otro usuario).
 - No se borran usuarios: se desactivan con `{active: false}`. Eso cierra sus sesiones.
 - Restablecer la contraseña también cierra las sesiones de ese usuario.
 - Un administrador no puede desactivarse ni quitarse el rol a sí mismo (409).
 
-No hay pantalla de usuarios todavía. Mientras tanto se gestionan desde `http://localhost:8000/docs`.
+La gestión de usuarios está integrada en el panel **Base de Datos & Ajustes** (`#panel-user-management`), visible y operativa exclusivamente al iniciar sesión como `admin`.
 
 ## 6. Equivalencias con `DataStore`
 

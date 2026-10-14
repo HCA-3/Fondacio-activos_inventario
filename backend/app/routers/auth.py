@@ -7,18 +7,20 @@ from sqlalchemy import delete, select
 
 from app.db import BD
 from app.models import Sesion, Usuario
-from app.schemas.usuario import Credenciales, UsuarioSalida
+from app.schemas.usuario import ContrasenaNueva, Credenciales, UsuarioSalida
 from app.security import (
     COOKIE_SESION,
     UsuarioActual,
     abrir_sesion,
     buscar_sesion,
+    hashear_contrasena,
     limite_login,
     poner_cookie,
     quitar_cookie,
     verificar_contrasena,
 )
 from app.services.auditoria import registrar
+from app.services.usuarios import cerrar_sesiones
 
 router = APIRouter(prefix="/api/auth", tags=["sesión"])
 
@@ -60,3 +62,16 @@ def cerrar_sesion(request: Request, respuesta: Response, bd: BD) -> None:
 @router.get("/me", response_model=UsuarioSalida)
 def quien_soy(usuario: UsuarioActual) -> Usuario:
     return usuario
+
+
+@router.post("/contrasena", status_code=status.HTTP_200_OK)
+def cambiar_mi_contrasena(
+    datos: ContrasenaNueva, respuesta: Response, usuario: UsuarioActual, bd: BD
+) -> dict:
+    usuario.hash_contrasena = hashear_contrasena(datos.password)
+    cerrar_sesiones(bd, usuario)
+    token = abrir_sesion(bd, usuario)
+    registrar(bd, usuario, "cambiar_contrasena", "usuarios", usuario.id)
+    bd.commit()
+    poner_cookie(respuesta, token)
+    return {"mensaje": "Contraseña actualizada exitosamente"}

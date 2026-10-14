@@ -46,30 +46,32 @@ Diseñado especialmente para el control y trazabilidad de los recursos en los do
 
 ## 🚀 Cómo Ejecutar la Aplicación
 
-La aplicación es una Single Page Application (SPA) sin dependencias de compilación complejas. Para abrirla:
+La aplicación opera bajo una arquitectura cliente-servidor completa: el backend en **FastAPI** sirve tanto los endpoints de la API REST (`/api/...`) como la aplicación SPA del frontend en la raíz (`/`).
 
-### Opción 0: Con el Backend (API + Base de Datos)
-Requiere Docker. Levanta la aplicación junto con PostgreSQL:
+### Ejecución con Docker (Recomendada)
+Requiere Docker Desktop instalado:
 ```bash
 docker compose up --build
 ```
-Luego ingresa a `http://localhost:8000`. La documentación interactiva de la API queda en `http://localhost:8000/docs`.
+1. Ingresa en tu navegador a: **`http://localhost:8000`**
+2. La documentación interactiva Swagger de la API queda disponible en: `http://localhost:8000/docs`
 
-El backend está en construcción: por ahora el frontend sigue guardando en el navegador.
+---
 
-### Opción 1: Directamente en el Navegador
-1. Haz doble clic en el archivo `frontend/index.html` o ábrelo con cualquier navegador moderno (Google Chrome, Microsoft Edge, Firefox, Safari).
+## 🔐 Credenciales y Control de Acceso
 
-### Opción 2: Con un Servidor Local Ligero (Recomendado)
-Si tienes Node.js, Python o la extensión Live Server de VS Code / IDE:
-```bash
-# Con Python
-python -m http.server 8080 --directory frontend
+Al inicializar la aplicación por primera vez en la base de datos, se crea automáticamente la cuenta de administración inicial:
 
-# Con npx serve
-npx serve frontend
-```
-Luego ingresa en tu navegador a: `http://localhost:8080` (o el puerto indicado).
+* **Usuario:** `admin`
+* **Contraseña:** `012345678`
+* **Rol:** `admin` (Administrador Total)
+
+### Reglas de Seguridad y Usuarios:
+* **Exclusividad para crear usuarios:** Únicamente el usuario `admin` tiene autorización para crear y registrar nuevos usuarios en el sistema (`POST /api/usuarios`).
+* **Roles del Sistema:**
+  * **`admin`**: Control total (creación, edición, eliminación de hojas de vida, sedes, préstamos y mantenimientos).
+  * **`consulta`**: Acceso de solo lectura y descarga de informes oficiales en Excel.
+* **Cambio de Contraseña:** Cualquier usuario autenticado puede cambiar su contraseña personal directamente desde el panel **Base de Datos & Ajustes** (`POST /api/auth/contrasena`).
 
 ---
 
@@ -77,22 +79,34 @@ Luego ingresa en tu navegador a: `http://localhost:8080` (o el puerto indicado).
 
 ```
 Fondacio-activos_inventario/
-├── backend/              # API en FastAPI + SQLAlchemy (migraciones en alembic/, pruebas en tests/)
-├── compose.yaml          # Entorno local: aplicación + PostgreSQL
-├── Dockerfile            # Imagen única: la API sirve también el frontend
-├── frontend/
-│   ├── index.html        # Estructura de la aplicación SPA, modales y plantillas
+├── backend/                  # API REST en FastAPI + SQLAlchemy 2.0 (PostgreSQL)
+│   ├── alembic/              # Historial declarativo de migraciones de base de datos
+│   ├── app/                  # Lógica de la API: routers, schemas Pydantic, services y models
+│   ├── scripts/              # Utilidades de terminal (crear_admin.py)
+│   └── tests/                # Suite de pruebas automatizadas con pytest
+├── compose.yaml              # Orquestación Docker: servicio app (FastAPI) + db (PostgreSQL 17)
+├── Dockerfile                # Imagen unificada de producción (UV + Python 3.13-slim)
+├── frontend/                 # Single Page Application (SPA)
+│   ├── index.html            # Estructura de la aplicación, vistas y modales
 │   ├── css/
-│   │   └── styles.css    # Sistema de diseño institucional, temas y print CSS
-│   ├── img/              # Imágenes de referencia de los equipos
+│   │   └── styles.css        # Sistema de diseño institucional Fondacio y modo oscuro
+│   ├── img/                  # Fotografías y presets de equipos de cómputo
 │   └── js/
-│       ├── data.js       # Capa de datos y persistencia local (el inventario arranca vacío)
-│       ├── dashboard.js  # Métricas, analítica y gráficos interactivos (Chart.js)
-│       ├── inventory.js  # CRUD de hardware, filtros, QR y exportación Excel
-│       ├── loans.js      # Préstamos de equipos y generación de actas de entrega
-│       ├── maintenance.js # Mantenimientos y bitácora técnica
-│       └── app.js        # Orquestador general, rutas SPA, tema y modales
-└── README.md             # Documentación del sistema
+│       ├── data.js           # Capa de comunicación asíncrona con la API REST (DataStoreAPI)
+│       ├── app.js            # Enrutador SPA, gestión de sesión, roles y eventos globales
+│       ├── dashboard.js      # Métricas patrimoniales y gráficos analíticos (Chart.js)
+│       ├── inventory.js      # Hojas de vida, imágenes binarias, QR y exportación Excel
+│       ├── loans.js          # Préstamos de equipos y actas oficiales de entrega
+│       ├── maintenance.js    # Mantenimientos y bitácora técnica de soporte
+│       ├── sedes.js          # Administración de sedes institucionales
+│       ├── diagnostico.js    # Auditoría de software, licencias y tablets
+│       └── customizer.js     # Personalizador de colores y marca institucional
+├── docs/                     # Documentación técnica oficial del proyecto
+│   ├── GUIA-MIGRACION-FRONTEND.md             # Especificación técnica del contrato de la API
+│   ├── INFORME-MIGRACION-FRONTEND.docx / .md   # Informe técnico de la migración realizada
+│   ├── REQUERIMIENTOS-SISTEMA-INVENTARIO.docx / .md # Requerimientos Funcionales y No Funcionales (SRS)
+│   └── ARQUITECTURA-SISTEMA-INVENTARIO.docx / .md # Documento de Arquitectura de Software (SAD)
+└── README.md                 # Documentación general y guía de puesta en marcha
 ```
 
 ---

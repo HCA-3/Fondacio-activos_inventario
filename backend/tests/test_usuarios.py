@@ -72,6 +72,17 @@ def test_crear_usuario(cliente_admin: TestClient, nuevo_cliente: Callable) -> No
     assert entrada.status_code == 200
 
 
+def test_solo_el_admin_principal_puede_crear_usuarios(
+    crear_usuario: Callable, entrar: Callable
+) -> None:
+    crear_usuario("segundo_admin", rol="admin")
+    cliente_segundo = entrar("segundo_admin")
+
+    respuesta = cliente_segundo.post("/api/usuarios", json=NUEVO)
+    assert respuesta.status_code == 403
+    assert "Solo el usuario administrador principal" in respuesta.json()["detail"]
+
+
 def test_no_se_repite_el_nombre_de_usuario(cliente_admin: TestClient) -> None:
     cliente_admin.post("/api/usuarios", json=NUEVO)
 

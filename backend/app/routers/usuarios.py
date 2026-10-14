@@ -41,6 +41,11 @@ def listar(
 
 @router.post("", response_model=UsuarioSalida, status_code=status.HTTP_201_CREATED)
 def crear(datos: UsuarioNuevo, bd: BD, admin: Admin) -> Usuario:
+    if admin.usuario != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Solo el usuario administrador principal ('admin') tiene permisos para crear nuevos usuarios",
+        )
     try:
         usuario = servicio.crear_usuario(bd, datos, admin)
     except servicio.UsuarioDuplicado:
