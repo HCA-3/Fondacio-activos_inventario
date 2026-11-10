@@ -39,10 +39,14 @@ def _error_de_negocio(_: Request, error: ErrorDeNegocio) -> JSONResponse:
     return JSONResponse({"detail": error.detalle}, status_code=error.codigo)
 
 
+# SQLSTATE de PostgreSQL para "unique_violation".
+UNICA_VIOLADA = "23505"
+
+
 def _violacion_de_unicidad(_: Request, error: IntegrityError) -> JSONResponse:
     # Dos peticiones simultáneas pueden pasar la comprobación previa y chocar con el índice único.
-    # Solo ese caso (SQLSTATE 23505) es un conflicto; llaves foráneas, checks y not null no lo son.
-    if getattr(error.orig, "sqlstate", None) != "23505":
+    # Solo ese caso (UNICA_VIOLADA) es un conflicto; llaves foráneas, checks y not null no lo son.
+    if getattr(error.orig, "sqlstate", None) != UNICA_VIOLADA:
         raise error
     detalle = "Ya existe un registro con ese valor; vuelve a intentarlo con otro"
     return JSONResponse({"detail": detalle}, status_code=Conflicto.codigo)
