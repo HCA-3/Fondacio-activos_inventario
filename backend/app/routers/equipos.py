@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -111,24 +111,6 @@ def historial_de_mantenimientos(equipo_id: str, bd: BD, _: UsuarioActual, pag: P
     return paginar(bd, consulta, pag)
 
 
-async def _leer_cuerpo(request: Request, maximo: int) -> bytes:
-    """Lee el cuerpo sin pasarse del máximo, para no cargar en memoria un archivo enorme."""
-    demasiado = HTTPException(
-        status.HTTP_413_CONTENT_TOO_LARGE, f"La imagen supera los {maximo // (1024 * 1024)} MB"
-    )
-    declarado = request.headers.get("content-length", "")
-    if declarado.isdigit() and int(declarado) > maximo:
-        raise demasiado
-    partes: list[bytes] = []
-    total = 0
-    async for parte in request.stream():
-        total += len(parte)
-        if total > maximo:
-            raise demasiado
-        partes.append(parte)
-    return b"".join(partes)
-
-
 def _guardar_imagen(bd: Session, equipo_id: str, contenido: bytes, admin: Usuario) -> Equipo:
     equipo = imagenes.guardar_imagen(bd, _buscar(bd, equipo_id), contenido, admin)
     bd.commit()
@@ -153,7 +135,7 @@ def _guardar_imagen(bd: Session, equipo_id: str, contenido: bytes, admin: Usuari
 )
 async def subir_imagen(equipo_id: str, request: Request, bd: BD, admin: Admin) -> Equipo:
     """El cuerpo de la petición es el archivo de la imagen, sin formulario."""
-    contenido = await _leer_cuerpo(request, imagenes.MAX_BYTES)
+    contenido = await imagenes.leer_cuerpo(request)
     # Reducir la imagen tarda; se hace fuera del hilo que atiende las demás peticiones.
     return await run_in_threadpool(_guardar_imagen, bd, equipo_id, contenido, admin)
 
@@ -167,18 +149,7 @@ def ver_imagen(equipo_id: str, request: Request, bd: BD, _: UsuarioActual) -> Re
     imagen = bd.get(EquipoImagen, equipo_id)
     if imagen is None:
         raise NoEncontrado("El equipo no tiene una foto subida")
-    etag = f'"{imagenes.huella(imagen.contenido)}"'
-    cabeceras = {
-        "ETag": etag,
-        # Con ?v= la dirección cambia al cambiar la foto, así que se puede guardar para siempre.
-        "Cache-Control": "private, max-age=31536000, immutable"
-        if "v" in request.query_params
-        else "private, no-cache",
-        "X-Content-Type-Options": "nosniff",
-    }
-    if request.headers.get("if-none-match") == etag:
-        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=cabeceras)
-    return Response(imagen.contenido, media_type=imagen.tipo, headers=cabeceras)
+    return imagenes.responder_imagen(imagen, request)
 
 
 @router.delete("/{equipo_id}/imagen", status_code=status.HTTP_204_NO_CONTENT)
