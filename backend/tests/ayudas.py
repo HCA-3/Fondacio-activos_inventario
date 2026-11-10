@@ -38,3 +38,12 @@ def nuevo_mantenimiento(cliente: TestClient, equipo_id: str, **campos) -> dict:
 
 def estado_del_equipo(cliente: TestClient, equipo_id: str) -> str:
     return cliente.get(f"/api/equipos/{equipo_id}").json()["status"]
+
+
+def nueva_donacion(cliente: TestClient, donante: dict, **campos) -> dict:
+    cuerpo = {
+        "donorId": donante["id"],
+        "sede": "Altos del Cabo",
+        "items": [{"name": "Silla plástica", "quantity": 10, "estimatedUnitValue": 20000}],
+    }
+    return crear(cliente, "/api/donaciones", cuerpo | campos)
