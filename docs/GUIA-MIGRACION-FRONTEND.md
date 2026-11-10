@@ -11,6 +11,7 @@ Se actualiza a medida que el backend crece. Lo que ya está disponible:
 | Sedes, equipos, préstamos, mantenimientos | Disponible |
 | Configuración (tema y datos de la organización) | Disponible |
 | Panel, exportación a Excel, fotos | Disponible |
+| Donaciones (donantes, categorías, ítems, comprobante, conversión a equipo, Excel) | Disponible (secciones 15 a 17) |
 
 ## 1. Levantar todo en tu máquina
 
@@ -432,13 +433,17 @@ Filtros: `estado`, `tipo` y `equipo` (id).
   "byCategory": { "PORTÁTIL": 4, "TABLETS": 5 },
   "activeLoansCount": 2,
   "overdueLoansCount": 0,
-  "pendingMaintCount": 1
+  "pendingMaintCount": 1,
+  "donationsThisMonth": 3,
+  "itemsReceivedThisMonth": 42
 }
 ```
 
 - `bySede` incluye las sedes sin equipos, en cero.
 - `byCategory` agrupa igual que antes: las tablets juntas en `TABLETS`, el resto por `computerType`, y `Otros` si no tiene.
 - `overdueLoansCount` es nuevo: los préstamos activos con la fecha de devolución pasada.
+- `donationsThisMonth` es nuevo: las donaciones `recibida` cuya `donationDate` cae en el mes en curso, en hora de Colombia. Las anuladas no cuentan.
+- `itemsReceivedThisMonth` es nuevo: la suma de `quantity` de los ítems de esas mismas donaciones (unidades, no filas).
 
 El resto del panel sale de las listas:
 
@@ -460,6 +465,8 @@ window.location.href = `/api/equipos/export.xlsx?${filtros}`;
 ```
 
 Con esto se puede quitar del `index.html` la librería SheetJS (`xlsx.full.min.js`), que es de las más pesadas de la página.
+
+Las donaciones tienen su propio Excel en `GET /api/donaciones/export.xlsx` (sección 17).
 
 ## 14. Fotos de los equipos
 
@@ -488,3 +495,284 @@ const equipo = await res.json();
 - El equipo debe existir antes de subirle la foto: al crear uno nuevo, primero `POST /api/equipos` y luego el `PUT` con el `id` que devuelve.
 - Si con un `PATCH` se cambia `image` por otra ruta o se deja vacío, la foto subida se descarta.
 - Las imágenes de `frontend/img/` siguen funcionando igual: son rutas normales en `image`.
+
+## 15. Donantes
+
+| Acción | Petición | Respuesta |
+|---|---|---|
+| Listar | `GET /api/donantes` | Lista paginada, ordenada por nombre |
+| Ver | `GET /api/donantes/{id}` | El donante |
+| Crear (solo `admin`) | `POST /api/donantes` | 201 con el donante |
+| Cambiar o desactivar (solo `admin`) | `PATCH /api/donantes/{id}` | El donante |
+
+Campos: `name` (obligatorio), `type` (`persona`, por defecto, o `empresa`), `contact`, `notes` y `active` (`true` por defecto). La respuesta añade `id`, `createdAt` y `updatedAt`.
+
+```json
+{
+  "id": "f39bb7fe-595b-48e4-a7b5-35ecae8e3bdf",
+  "name": "Empresa Aliada SAS",
+  "type": "empresa",
+  "contact": "aliada@example.com",
+  "notes": "",
+  "active": true,
+  "createdAt": "2026-11-10T20:40:51.980079Z",
+  "updatedAt": "2026-11-10T20:40:51.980079Z"
+}
+```
+
+Reglas:
+
+- El nombre no se repite, sin distinguir mayúsculas (409).
+- Los donantes no se borran: se desactivan con `{active: false}`. Sus donaciones se conservan.
+- Un donante inactivo no puede recibir donaciones nuevas (409 al crear una donación o al cambiar el donante de una).
+- El historial de un donante es la lista de donaciones filtrada por él: `GET /api/donaciones?donante={id}`.
+
+Filtros de la lista: `activo` (`true` o `false`) y `q` (texto en el nombre o el contacto).
+
+## 16. Categorías de los ítems donados
+
+| Acción | Petición | Respuesta |
+|---|---|---|
+| Listar | `GET /api/categorias` | Lista paginada, ordenada por nombre |
+| Ver | `GET /api/categorias/{id}` | La categoría |
+| Crear (solo `admin`) | `POST /api/categorias` con `{name}` | 201 con la categoría |
+| Renombrar o desactivar (solo `admin`) | `PATCH /api/categorias/{id}` con `{name}` o `{active}` | La categoría |
+| Borrar (solo `admin`) | `DELETE /api/categorias/{id}` | 204 |
+
+Campos: `name` y `active`. La respuesta añade `id`, `createdAt` y `updatedAt`.
+
+Reglas:
+
+- Viene precargada con un catálogo inicial: Computadores, Portátiles, Tablets, Mesas, Sillas, Escritorios, Estantes, Electrodomésticos, Utensilios de cocina, Papelería, Libros, Material didáctico, Herramientas y Otros.
+- El nombre no se repite, sin distinguir mayúsculas ni espacios de más: `"  sillas "` choca con `Sillas` (409).
+- `GET /api/categorias?active=true` trae solo las que se ofrecen en formularios nuevos. Desactivar es la forma normal de dejar de ofrecer una: los ítems que ya la usan no cambian.
+- Al borrar una categoría sus ítems siguen existiendo "Sin categoría": `categoryId` pasa a `null` y `categoryName` a `""`.
+- Estas categorías son solo de los ítems donados. El campo `category` de los equipos sigue siendo texto libre.
+
+## 17. Donaciones
+
+Cada donación es un acta: un donante, una sede destino, una fecha, uno o más ítems y un comprobante opcional.
+
+| Acción | Petición | Respuesta |
+|---|---|---|
+| Listar | `GET /api/donaciones` | Lista paginada, de la más reciente a la más antigua (por `donationDate`) |
+| Ver | `GET /api/donaciones/{id}` | La donación con sus ítems |
+| Crear (solo `admin`) | `POST /api/donaciones` | 201 con la donación |
+| Cambiar (solo `admin`) | `PATCH /api/donaciones/{id}` | La donación |
+| Anular (solo `admin`) | `POST /api/donaciones/{id}/anular` | La donación |
+| Convertir un ítem en equipo (solo `admin`) | `POST /api/donaciones/{id}/items/{itemId}/equipo` | 201 con el equipo completo |
+| Subir o reemplazar el comprobante (solo `admin`) | `PUT /api/donaciones/{id}/comprobante` | La donación, con `receipt` actualizado |
+| Ver el comprobante | `GET /api/donaciones/{id}/comprobante` | La imagen en WebP |
+| Quitar el comprobante (solo `admin`) | `DELETE /api/donaciones/{id}/comprobante` | 204 |
+| Exportar a Excel | `GET /api/donaciones/export.xlsx` | El archivo |
+
+Las donaciones no se borran: se anulan.
+
+### La donación
+
+```json
+{
+  "id": "4033a684-48b1-45ac-a68f-aa600245baf6",
+  "donorId": "f39bb7fe-595b-48e4-a7b5-35ecae8e3bdf",
+  "donorName": "Empresa Aliada SAS",
+  "sede": "Altos del Cabo",
+  "donationDate": "2026-11-05",
+  "notes": "Entrega en sede",
+  "status": "recibida",
+  "receipt": "",
+  "items": [
+    {
+      "id": "6d239ec6-acab-4401-931c-81f93e11fe63",
+      "name": "Tablet Samsung",
+      "categoryId": null,
+      "categoryName": "",
+      "quantity": 1,
+      "condition": "usado",
+      "estimatedUnitValue": 400000,
+      "description": "",
+      "assetId": null
+    },
+    {
+      "id": "5b217e26-d439-4715-8966-1bc8a62d0b50",
+      "name": "Sillas",
+      "categoryId": "48d4d524-8e1e-4dad-8e61-3d9eaf39f678",
+      "categoryName": "Sillas",
+      "quantity": 4,
+      "condition": "nuevo",
+      "estimatedUnitValue": 50000,
+      "description": "Plásticas blancas",
+      "assetId": null
+    }
+  ],
+  "totalEstimated": 600000,
+  "createdAt": "2026-11-10T20:40:51.980079Z",
+  "updatedAt": "2026-11-10T20:40:51.980079Z"
+}
+```
+
+- `sede` es el **nombre** de la sede, como en equipos.
+- `status` es `recibida` o `anulada`.
+- `receipt` es la dirección del comprobante, o `""` si no tiene.
+- `totalEstimated` lo calcula el servidor: la suma de `quantity × estimatedUnitValue`. Los ítems sin valor no suman. No se envía.
+- `assetId` es el id del equipo en que se convirtió el ítem, o `null`.
+- La lista trae cada donación completa, con sus ítems y su total.
+
+### Crear
+
+| Campo | Notas |
+|---|---|
+| `donorId` | Obligatorio. Id de un donante activo |
+| `sede` | Obligatorio. Nombre o id |
+| `donationDate` | Si falta o va vacía, hoy. No puede ser futura |
+| `notes` | Opcional |
+| `items` | Obligatorio. Entre 1 y 200 ítems |
+
+Cada ítem:
+
+| Campo | Notas |
+|---|---|
+| `name` | Obligatorio |
+| `categoryId` | Id de una categoría existente. Opcional |
+| `newCategory` | Nombre de una categoría nueva, que se crea al guardar. Si ya existe una con ese nombre, se usa esa |
+| `quantity` | Entero de 1 en adelante. 1 por defecto |
+| `condition` | `nuevo` (por defecto), `usado` o `danado` |
+| `estimatedUnitValue` | Valor por unidad en pesos, entero de 0 en adelante. Opcional (`null`) |
+| `description` | Opcional |
+
+Se envía `categoryId` o `newCategory`, no los dos (422). Sin ninguno, el ítem queda sin categoría.
+
+```js
+const donacion = await api('/api/donaciones', {
+  method: 'POST',
+  body: {
+    donorId: donante.id,
+    sede: 'Altos del Cabo',
+    donationDate: '2026-11-05',
+    notes: 'Entrega en sede',
+    items: [
+      { name: 'Tablet Samsung', quantity: 1, condition: 'usado', estimatedUnitValue: 400000 },
+      { name: 'Ollas', newCategory: 'Menaje de cocina', quantity: 3 }
+    ]
+  }
+});
+```
+
+### Filtros
+
+| Parámetro | Efecto |
+|---|---|
+| `desde`, `hasta` | Rango de `donationDate`, los dos incluidos. `desde` posterior a `hasta` responde 422 |
+| `donante` | Id del donante |
+| `sede` | Nombre o id |
+| `estado` | `recibida` o `anulada` |
+| `categoria` | Id o nombre de la categoría: donaciones con al menos un ítem de esa categoría |
+| `q` | Texto en el nombre o la descripción de los ítems |
+
+`categoria` y `q` deben coincidir en el **mismo** ítem. Una donación con varios ítems que coinciden sale una sola vez. Se pagina con `limit` y `offset`, como todas las listas.
+
+```js
+const filtros = new URLSearchParams({ desde: '2026-11-01', estado: 'recibida', q: 'silla' });
+const { items, total } = await api(`/api/donaciones?${filtros}&limit=20&offset=0`);
+```
+
+### Cambiar
+
+`PATCH` acepta `donorId`, `sede`, `donationDate`, `notes` e `items`. Solo cambia lo que se envía; `donorId`, `sede`, `donationDate` e `items` no pueden ir en `null`.
+
+Si viene `items`, **reemplaza la lista completa**:
+
+- Un ítem con `id` actualiza ese ítem.
+- Un ítem sin `id` se crea.
+- Los ítems que no vengan se quitan.
+- Un `id` que no es de esa donación responde 422.
+
+Un ítem convertido en equipo (`assetId` distinto de `null`) queda bloqueado: hay que reenviarlo con su `id` y **sin cambios** en `name`, categoría, `quantity`, `condition`, `estimatedUnitValue` ni `description`. Si cambia algo o se omite, responde 409. Lo más simple es reenviarlo tal como llegó en el `GET`:
+
+```js
+const items = donacion.items.map(i => i.assetId
+  ? { id: i.id, name: i.name, categoryId: i.categoryId || '', quantity: i.quantity,
+      condition: i.condition, estimatedUnitValue: i.estimatedUnitValue, description: i.description }
+  : { ...camposDelFormulario(i), id: i.id });
+
+await api(`/api/donaciones/${donacion.id}`, { method: 'PATCH', body: { notes: 'Corregido', items } });
+```
+
+En el cuerpo del `PATCH` los ítems solo aceptan `id`, `name`, `categoryId`, `newCategory`, `quantity`, `condition`, `estimatedUnitValue` y `description`. Hay que quitar `categoryName` y `assetId` antes de reenviarlos (422 si no).
+
+### Anular
+
+`POST /api/donaciones/{id}/anular`, sin cuerpo. Una donación anulada es **de solo lectura**: cambiarla, volver a anularla, subir o quitar su comprobante o convertir sus ítems responde 409. Sigue saliendo en la lista y en el Excel; para ocultarla se filtra con `estado=recibida`.
+
+### Comprobante
+
+Igual que las fotos de los equipos (sección 14): una imagen por donación, el cuerpo del `PUT` es el archivo tal cual.
+
+```js
+const archivo = document.getElementById('donation-receipt-file').files[0];
+const res = await fetch(`/api/donaciones/${id}/comprobante`, {
+  method: 'PUT',
+  headers: { 'Content-Type': archivo.type },
+  body: archivo
+});
+const donacion = await res.json();
+```
+
+- Formatos: JPEG, PNG y WebP (422 si no es una imagen). Máximo 10 MB (413). Sin PDF.
+- El servidor la reduce a 1280 px de lado como máximo y la guarda en WebP.
+- `receipt` vale `/api/donaciones/{id}/comprobante?v=...` y sirve directamente como `src` de un `<img>` o como enlace para abrirla. Cambia cada vez que se reemplaza.
+- `GET` del comprobante responde 404 si la donación no tiene uno.
+
+### Convertir un ítem en equipo
+
+Un ítem de cantidad 1 de una donación `recibida` se puede convertir en un equipo del inventario. El cuerpo es el mismo de `POST /api/equipos` (sección 8): `code` (la placa) es obligatorio y el resto es opcional. Si no se envía `sede`, el equipo queda en la sede de la donación.
+
+```js
+const equipo = await api(`/api/donaciones/${donacionId}/items/${itemId}/equipo`, {
+  method: 'POST',
+  body: { code: 'FND-TAB-001', computerType: 'TABLET', brand: 'Samsung', status: 'bodega' }
+});
+// Después, el ítem trae assetId === equipo.id.
+```
+
+- Responde 201 con el equipo completo, igual que `GET /api/equipos/{id}`.
+- Solo ítems de cantidad 1 (409). Para convertir varias unidades, se registran como ítems separados de cantidad 1, cada uno con su placa.
+- Un ítem ya convertido no se convierte otra vez (409).
+- La placa no se repite (409), igual que al crear un equipo.
+- Un ítem que no es de esa donación responde 404.
+
+### Exportar a Excel
+
+`GET /api/donaciones/export.xlsx` acepta los mismos filtros que la lista y trae todas las donaciones que coincidan, sin paginar. El libro tiene dos hojas: una con las donaciones (fecha, donante, sede, estado, ítems, unidades, total estimado y notas) y otra con cada ítem. Los usuarios `consulta` también pueden descargarlo.
+
+```js
+const filtros = new URLSearchParams({ desde: '2026-11-01', hasta: '2026-11-30', estado: 'recibida' });
+window.location.href = `/api/donaciones/export.xlsx?${filtros}`;
+```
+
+### Errores
+
+| Código | Cuándo |
+|---|---|
+| 403 | Un usuario `consulta` intenta crear, cambiar, anular, convertir o tocar el comprobante |
+| 404 | La donación no existe, el ítem no es de esa donación (al convertir) o no hay comprobante |
+| 409 | El donante está inactivo; la donación está anulada; el ítem convertido se cambia o se omite en el `PATCH`; el ítem ya se convirtió o su cantidad no es 1; la placa ya existe |
+| 413 | El comprobante pasa de 10 MB |
+| 422 | Falta un campo obligatorio; `items` vacío; fecha futura; `categoryId` y `newCategory` juntos; donante, categoría o ítem inexistentes; `desde` posterior a `hasta`; el comprobante no es JPEG, PNG ni WebP |
+
+Los 422 de las reglas propias traen `loc` con el nombre del campo de la API (`donorId`, `donationDate`, `categoryId`, `items`, `desde`), con la misma forma que los de validación:
+
+```json
+{ "detail": [{ "type": "value_error", "loc": ["body", "donationDate"], "msg": "La fecha de la donación no puede ser futura" }] }
+```
+
+### En el frontend
+
+La sección **Donaciones** de `frontend/` (`js/donaciones.js`) ya usa todas estas rutas. Es mínima a propósito, solo para mostrar el backend:
+
+- [x] Lista con filtros (desde, hasta, donante, sede, estado, categoría y texto), paginación de 20 en 20 y el total estimado de cada donación.
+- [x] Resumen del mes con `donationsThisMonth` e `itemsReceivedThisMonth` del panel.
+- [x] Formulario para crear y editar, con ítems de categoría existente o nueva y el total calculado mientras se escribe. Los ítems convertidos se muestran bloqueados y se reenvían sin cambios.
+- [x] Detalle con los ítems, el comprobante (subir, ver y quitar), la conversión de un ítem en equipo y el botón de anular.
+- [x] Botón de exportar a Excel con los filtros activos.
+- [x] Pestañas de donantes (crear, editar, activar o desactivar y ver su historial) y de categorías (crear, renombrar, activar o desactivar y borrar).
+- [x] Con el rol `consulta` se ocultan las acciones de escritura y una donación anulada se muestra de solo lectura.
