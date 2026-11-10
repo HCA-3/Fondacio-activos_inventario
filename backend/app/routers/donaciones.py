@@ -16,9 +16,16 @@ from app.schemas.equipo import EquipoDetalle
 from app.security import Admin, UsuarioActual
 from app.services import donaciones as servicio
 from app.services import imagenes
+from app.services.exportacion_donaciones import generar_excel_donaciones
 from app.services.filtros_donaciones import FiltrosDeDonaciones
+from app.tiempo import hoy
+
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 router = APIRouter(prefix="/api/donaciones", tags=["donaciones"])
+
+# Las más recientes primero; el id desempata para que la paginación sea estable.
+ORDEN = (Donacion.fecha.desc(), Donacion.creado_en.desc(), Donacion.id)
 
 
 def _buscar(bd: BD, donacion_id: str, *, bloquear: bool = False) -> Donacion:
@@ -34,10 +41,23 @@ Filtros = Annotated[FiltrosDeDonaciones, Depends()]
 
 @router.get("", response_model=Pagina[DonacionSalida])
 def listar(bd: BD, _: UsuarioActual, pag: Pag, filtros: Filtros) -> dict:
-    consulta = filtros.consulta().order_by(
-        Donacion.fecha.desc(), Donacion.creado_en.desc(), Donacion.id
+    return paginar(bd, filtros.consulta().order_by(*ORDEN), pag)
+
+
+# Va antes de /{donacion_id}: si no, "export.xlsx" se tomaría por el id de una donación.
+@router.get(
+    "/export.xlsx",
+    response_class=Response,
+    responses={200: {"content": {XLSX: {}}, "description": "Libro de Excel"}},
+)
+def exportar(bd: BD, _: UsuarioActual, filtros: Filtros) -> Response:
+    donaciones = bd.scalars(filtros.consulta().order_by(*ORDEN)).all()
+    nombre = f"Donaciones_Fondacio_{hoy().isoformat()}.xlsx"
+    return Response(
+        generar_excel_donaciones(donaciones),
+        media_type=XLSX,
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
     )
-    return paginar(bd, consulta, pag)
 
 
 @router.post("", response_model=DonacionSalida, status_code=status.HTTP_201_CREATED)
