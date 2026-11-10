@@ -16,3 +16,5 @@ class Panel(Salida):
     active_loans_count: int
     overdue_loans_count: int
     pending_maint_count: int
+    donations_this_month: int
+    items_received_count: int

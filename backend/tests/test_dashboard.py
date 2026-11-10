@@ -3,7 +3,14 @@ from datetime import timedelta
 from fastapi.testclient import TestClient
 
 from app.tiempo import hoy
-from tests.ayudas import nueva_sede, nuevo_equipo, nuevo_mantenimiento, nuevo_prestamo
+from tests.ayudas import (
+    nueva_donacion,
+    nueva_sede,
+    nuevo_donante,
+    nuevo_equipo,
+    nuevo_mantenimiento,
+    nuevo_prestamo,
+)
 
 AYER = (hoy() - timedelta(days=1)).isoformat()
 
@@ -22,6 +29,8 @@ def test_el_panel_vacio_devuelve_ceros(cliente_admin: TestClient) -> None:
         "activeLoansCount": 0,
         "overdueLoansCount": 0,
         "pendingMaintCount": 0,
+        "donationsThisMonth": 0,
+        "itemsReceivedCount": 0,
     }
 
 
@@ -56,7 +65,32 @@ def test_el_panel_resume_el_inventario(cliente_admin: TestClient) -> None:
         "activeLoansCount": 2,
         "overdueLoansCount": 1,
         "pendingMaintCount": 1,
+        "donationsThisMonth": 0,
+        "itemsReceivedCount": 0,
     }
+
+
+def test_el_panel_cuenta_las_donaciones_del_mes_y_los_items_recibidos(
+    cliente_admin: TestClient,
+) -> None:
+    admin = cliente_admin
+    nueva_sede(admin)
+    donante = nuevo_donante(admin)
+    mes_pasado = (hoy().replace(day=1) - timedelta(days=1)).isoformat()
+    items = [{"name": "Silla", "quantity": 4}, {"name": "Mesa", "quantity": 3}]
+    nueva_donacion(admin, donante, items=items)
+    nueva_donacion(admin, donante, items=[{"name": "Silla", "quantity": 5}])
+    nueva_donacion(
+        admin, donante, donationDate=mes_pasado, items=[{"name": "Mesa", "quantity": 10}]
+    )
+    anulada = nueva_donacion(admin, donante, items=[{"name": "Silla", "quantity": 100}])
+    admin.post(f"/api/donaciones/{anulada['id']}/anular")
+
+    panel = admin.get("/api/dashboard").json()
+
+    # Las anuladas no cuentan; los ítems suman cantidades, también los de meses anteriores.
+    assert panel["donationsThisMonth"] == 2
+    assert panel["itemsReceivedCount"] == 22
 
 
 def test_el_rol_consulta_ve_el_panel(cliente_consulta: TestClient) -> None:
