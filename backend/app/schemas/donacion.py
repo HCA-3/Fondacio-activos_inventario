@@ -81,6 +81,7 @@ class DonacionSalida(Salida):
     donation_date: date = Field(validation_alias="fecha")
     notes: str = Field(validation_alias="notas")
     status: EstadoDonacion = Field(validation_alias="estado")
+    receipt: str = Field(validation_alias="comprobante")
     items: list[ItemSalida]
     total_estimated: int = Field(validation_alias="total_estimado")
     created_at: datetime = Field(validation_alias="creado_en")

@@ -511,3 +511,156 @@ def test_un_item_convertido_con_la_categoria_borrada_se_reenvia_sin_problema(
 
     assert como_lo_devolvio_la_api.status_code == 200, como_lo_devolvio_la_api.text
     assert con_el_id_viejo.status_code == 422
+
+
+def _ids(cliente: TestClient, **params) -> list[str]:
+    respuesta = cliente.get("/api/donaciones", params=params)
+    assert respuesta.status_code == 200, respuesta.text
+    return [d["id"] for d in respuesta.json()["items"]]
+
+
+def _filtros_de_ejemplo(cliente: TestClient) -> dict:
+    nueva_sede(cliente)
+    nueva_sede(cliente, "Sede Norte", code="NORTE")
+    ana = nuevo_donante(cliente, "Ana Ruiz")
+    colegio = nuevo_donante(cliente, "Colegio San José", type="empresa")
+    mesas = nueva_categoria(cliente, "Mesas de juntas")
+    sillas = nueva_categoria(cliente, "Sillas de oficina")
+    d1 = nueva_donacion(
+        cliente,
+        ana,
+        donationDate="2026-01-10",
+        items=[{"name": "Silla de 100%", "categoryId": sillas["id"]}],
+    )
+    d2 = nueva_donacion(
+        cliente,
+        colegio,
+        sede="Sede Norte",
+        donationDate="2026-02-10",
+        items=[
+            {"name": "Mesa redonda", "categoryId": mesas["id"], "description": "Madera"},
+            {"name": "Silla alta", "categoryId": sillas["id"]},
+        ],
+    )
+    d3 = nueva_donacion(
+        cliente,
+        colegio,
+        donationDate="2026-03-10",
+        items=[{"name": "Tablero_1", "categoryId": mesas["id"]}],
+    )
+    anulada = nueva_donacion(cliente, ana, donationDate="2026-03-20", items=[{"name": "Cobija"}])
+    cliente.post(f"/api/donaciones/{anulada['id']}/anular")
+    return {
+        "ana": ana,
+        "colegio": colegio,
+        "mesas": mesas,
+        "sillas": sillas,
+        "d1": d1["id"],
+        "d2": d2["id"],
+        "d3": d3["id"],
+        "anulada": anulada["id"],
+    }
+
+
+def test_filtra_por_rango_de_fechas_inclusivo(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    assert _ids(cliente_admin, desde="2026-02-10", hasta="2026-03-10") == [e["d3"], e["d2"]]
+    assert _ids(cliente_admin, desde="2026-03-11") == [e["anulada"]]
+    assert _ids(cliente_admin, hasta="2026-01-31") == [e["d1"]]
+    assert cliente_admin.get("/api/donaciones", params={"desde": "x"}).status_code == 422
+
+
+def test_filtra_por_donante_para_ver_su_historial(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    assert _ids(cliente_admin, donante=e["colegio"]["id"]) == [e["d3"], e["d2"]]
+    assert _ids(cliente_admin, donante="no-existe") == []
+
+
+def test_filtra_por_sede_por_id_o_nombre(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    assert _ids(cliente_admin, sede="sede norte") == [e["d2"]]
+    assert len(_ids(cliente_admin, sede="Altos del Cabo")) == 3
+
+
+def test_filtra_por_estado(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    assert _ids(cliente_admin, estado="anulada") == [e["anulada"]]
+    assert e["anulada"] not in _ids(cliente_admin, estado="recibida")
+    assert cliente_admin.get("/api/donaciones", params={"estado": "otro"}).status_code == 422
+
+
+def test_filtra_por_categoria_por_id_o_nombre(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    assert _ids(cliente_admin, categoria=e["mesas"]["id"]) == [e["d3"], e["d2"]]
+    assert _ids(cliente_admin, categoria="SILLAS DE OFICINA") == [e["d2"], e["d1"]]
+
+
+def test_busca_texto_en_nombre_y_descripcion_de_los_items(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    assert _ids(cliente_admin, q="silla") == [e["d2"], e["d1"]]
+    assert _ids(cliente_admin, q="madera") == [e["d2"]]
+    assert len(_ids(cliente_admin, q="  ")) == 4
+
+
+def test_la_busqueda_trata_los_comodines_como_texto(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    assert _ids(cliente_admin, q="100%") == [e["d1"]]
+    assert _ids(cliente_admin, q="%") == [e["d1"]]
+    assert _ids(cliente_admin, q="_") == [e["d3"]]
+
+
+def test_un_filtro_de_items_no_duplica_donaciones_ni_el_total(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    # d2 tiene dos ítems que coinciden con "a".
+    pagina = cliente_admin.get("/api/donaciones", params={"q": "a"}).json()
+
+    ids = [d["id"] for d in pagina["items"]]
+    assert len(ids) == len(set(ids))
+    assert pagina["total"] == len(ids)
+    assert e["d2"] in ids
+
+
+def test_categoria_y_texto_se_buscan_en_el_mismo_item(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    # "Mesa redonda" es de Mesas y "Silla alta" de Sillas, ambas en d2.
+    assert _ids(cliente_admin, categoria="mesas de juntas", q="silla") == []
+    assert _ids(cliente_admin, categoria="Sillas de oficina", q="silla") == [e["d2"], e["d1"]]
+
+
+def test_los_filtros_se_combinan(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    assert _ids(cliente_admin, donante=e["colegio"]["id"], desde="2026-03-01") == [e["d3"]]
+    assert _ids(cliente_admin, donante=e["ana"]["id"], estado="recibida") == [e["d1"]]
+    assert _ids(cliente_admin, sede="Sede Norte", categoria="mesas de juntas", q="redonda") == [
+        e["d2"]
+    ]
+    assert _ids(cliente_admin, sede="Sede Norte", estado="anulada") == []
+    respuesta = cliente_admin.get(
+        "/api/donaciones", params={"donante": e["colegio"]["id"], "limit": 1}
+    ).json()
+    assert (respuesta["total"], len(respuesta["items"])) == (2, 1)
+
+
+def test_los_filtros_por_nombre_ignoran_espacios_sobrantes(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    assert _ids(cliente_admin, sede="  sede norte ") == [e["d2"]]
+    assert _ids(cliente_admin, categoria=" Mesas de juntas ") == [e["d3"], e["d2"]]
+
+
+def test_un_rango_de_fechas_invertido_se_rechaza(cliente_admin: TestClient) -> None:
+    respuesta = cliente_admin.get(
+        "/api/donaciones", params={"desde": "2026-03-01", "hasta": "2026-02-01"}
+    )
+
+    assert respuesta.status_code == 422

@@ -4,7 +4,15 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.errores import Conflicto, DatoInvalido, NoEncontrado
-from app.models import Categoria, Donacion, Donante, Equipo, ItemDonacion, Usuario
+from app.models import (
+    Categoria,
+    Donacion,
+    DonacionComprobante,
+    Donante,
+    Equipo,
+    ItemDonacion,
+    Usuario,
+)
 from app.models.donacion import EstadoDonacion
 from app.schemas.categoria import CategoriaNueva
 from app.schemas.donacion import (
@@ -14,7 +22,7 @@ from app.schemas.donacion import (
     ItemCambio,
     ItemNuevo,
 )
-from app.services import categorias, equipos
+from app.services import categorias, equipos, imagenes
 from app.services.auditoria import registrar
 from app.services.comun import aplicar_cambios, marcar_autor, resolver_sede
 from app.tiempo import hoy
@@ -230,3 +238,30 @@ def anular_donacion(bd: Session, donacion: Donacion, autor: Usuario) -> Donacion
     _tocar(donacion, autor)
     registrar(bd, autor, "anular", "donaciones", donacion.id)
     return donacion
+
+
+def ruta_de_comprobante(donacion: Donacion) -> str:
+    return f"/api/donaciones/{donacion.id}/comprobante"
+
+
+def subir_comprobante(
+    bd: Session, donacion: Donacion, contenido: bytes, autor: Usuario
+) -> Donacion:
+    _exigir_recibida(donacion)
+    webp = imagenes.guardar_webp(bd, DonacionComprobante, "donacion_id", donacion.id, contenido)
+    # La huella en la dirección hace que el navegador pida la imagen nueva al reemplazarla.
+    donacion.comprobante = f"{ruta_de_comprobante(donacion)}?v={imagenes.huella(webp)}"
+    _tocar(donacion, autor)
+    registrar(bd, autor, "subir_comprobante", "donaciones", donacion.id, {"bytes": len(webp)})
+    return donacion
+
+
+def borrar_comprobante(bd: Session, donacion: Donacion, autor: Usuario) -> None:
+    _exigir_recibida(donacion)
+    fila = bd.get(DonacionComprobante, donacion.id)
+    if fila is None:
+        raise NoEncontrado("La donación no tiene comprobante")
+    bd.delete(fila)
+    donacion.comprobante = ""
+    _tocar(donacion, autor)
+    registrar(bd, autor, "borrar_comprobante", "donaciones", donacion.id)

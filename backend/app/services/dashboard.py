@@ -5,7 +5,16 @@ from typing import Any
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Equipo, EstadoEquipo, Mantenimiento, Prestamo, Sede
+from app.models import (
+    Donacion,
+    Equipo,
+    EstadoDonacion,
+    EstadoEquipo,
+    ItemDonacion,
+    Mantenimiento,
+    Prestamo,
+    Sede,
+)
 from app.models.mantenimiento import ESTADOS_ABIERTOS
 from app.models.prestamo import EstadoPrestamo
 from app.tiempo import hoy
@@ -30,6 +39,17 @@ def calcular_panel(bd: Session) -> dict[str, Any]:
     activos = (
         select(func.count()).select_from(Prestamo).where(Prestamo.estado == EstadoPrestamo.ACTIVO)
     )
+    # El mes se cuenta con la fecha de la donación en hora de Colombia; las anuladas no cuentan.
+    inicio_mes = hoy().replace(day=1)
+    recibidas = Donacion.estado == EstadoDonacion.RECIBIDA
+    donaciones_del_mes = (
+        select(func.count()).select_from(Donacion).where(recibidas, Donacion.fecha >= inicio_mes)
+    )
+    items_recibidos = (
+        select(func.coalesce(func.sum(ItemDonacion.cantidad), 0))
+        .join(Donacion, Donacion.id == ItemDonacion.donacion_id)
+        .where(recibidas, Donacion.fecha >= inicio_mes)
+    )
     return {
         "total": sum(por_estado.values()),
         "operativos": por_estado.get(EstadoEquipo.OPERATIVO, 0),
@@ -47,4 +67,6 @@ def calcular_panel(bd: Session) -> dict[str, Any]:
             .select_from(Mantenimiento)
             .where(Mantenimiento.estado.in_(ESTADOS_ABIERTOS))
         ),
+        "donations_this_month": bd.scalar(donaciones_del_mes),
+        "items_received_this_month": bd.scalar(items_recibidos),
     }
