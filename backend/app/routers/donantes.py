@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 from sqlalchemy import select
 
+from app.busqueda import patron_de_busqueda
 from app.db import BD
 from app.errores import NoEncontrado
 from app.models import Donante
@@ -36,9 +37,7 @@ def listar(
     if activo is not None:
         consulta = consulta.where(Donante.activo == activo)
     if q and q.strip():
-        # Se escapan los comodines para que "%" o "_" se busquen como texto literal.
-        literal = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        patron = f"%{literal}%"
+        patron = patron_de_busqueda(q.strip())
         consulta = consulta.where(
             Donante.nombre.ilike(patron, escape="\\") | Donante.contacto.ilike(patron, escape="\\")
         )

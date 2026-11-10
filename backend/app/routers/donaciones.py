@@ -6,8 +6,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import Select, func, or_, select
 
+from app.busqueda import patron_de_busqueda
 from app.db import BD
-from app.errores import NoEncontrado
+from app.errores import DatoInvalido, NoEncontrado
 from app.models import Categoria, Donacion, ItemDonacion, Sede
 from app.models.donacion import EstadoDonacion
 from app.paginacion import Pag, paginar
@@ -29,11 +30,6 @@ def _buscar(bd: BD, donacion_id: str, *, bloquear: bool = False) -> Donacion:
     return donacion
 
 
-def _patron(texto: str) -> str:
-    seguro = texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    return f"%{seguro}%"
-
-
 class FiltrosDeDonaciones:
     """Filtros de la lista. El historial de un donante es `?donante=<id>`."""
 
@@ -49,10 +45,12 @@ class FiltrosDeDonaciones:
     ) -> None:
         self.desde = desde
         self.hasta = hasta
-        self.donante = donante
-        self.sede = sede
+        if desde and hasta and desde > hasta:
+            raise DatoInvalido("desde", "La fecha inicial no puede ser posterior a la final")
+        self.donante = donante.strip() if donante else None
+        self.sede = sede.strip() if sede else None
         self.estado = estado
-        self.categoria = categoria
+        self.categoria = categoria.strip() if categoria else None
         self.q = q.strip() if q else ""
 
     def consulta(self) -> Select:
@@ -89,7 +87,7 @@ class FiltrosDeDonaciones:
                     )
                 )
             if self.q:
-                patron = _patron(self.q)
+                patron = patron_de_busqueda(self.q)
                 item = item.where(
                     or_(
                         ItemDonacion.nombre.ilike(patron, escape="\\"),

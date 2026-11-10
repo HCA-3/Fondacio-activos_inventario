@@ -450,3 +450,18 @@ def test_los_filtros_se_combinan(cliente_admin: TestClient) -> None:
         "/api/donaciones", params={"donante": e["colegio"]["id"], "limit": 1}
     ).json()
     assert (respuesta["total"], len(respuesta["items"])) == (2, 1)
+
+
+def test_los_filtros_por_nombre_ignoran_espacios_sobrantes(cliente_admin: TestClient) -> None:
+    e = _filtros_de_ejemplo(cliente_admin)
+
+    assert _ids(cliente_admin, sede="  sede norte ") == [e["d2"]]
+    assert _ids(cliente_admin, categoria=" Mesas de juntas ") == [e["d3"], e["d2"]]
+
+
+def test_un_rango_de_fechas_invertido_se_rechaza(cliente_admin: TestClient) -> None:
+    respuesta = cliente_admin.get(
+        "/api/donaciones", params={"desde": "2026-03-01", "hasta": "2026-02-01"}
+    )
+
+    assert respuesta.status_code == 422
