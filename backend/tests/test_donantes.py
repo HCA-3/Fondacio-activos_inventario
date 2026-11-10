@@ -140,3 +140,14 @@ def test_altas_y_cambios_quedan_en_auditoria(cliente_admin: TestClient, bd: Sess
         ("actualizar", {"activo": [True, False]}),
     ]
     assert all(f.entidad_id == donante["id"] for f in filas)
+
+
+def test_el_texto_de_busqueda_no_usa_comodines(cliente_admin: TestClient) -> None:
+    nuevo_donante(cliente_admin, "Ana Pérez")
+    nuevo_donante(cliente_admin, "100% Solidario")
+
+    nombres = [
+        d["name"] for d in cliente_admin.get("/api/donantes", params={"q": "%"}).json()["items"]
+    ]
+
+    assert nombres == ["100% Solidario"]

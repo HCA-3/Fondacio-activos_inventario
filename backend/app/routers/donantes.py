@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.db import BD
 from app.errores import NoEncontrado
@@ -36,9 +36,11 @@ def listar(
     if activo is not None:
         consulta = consulta.where(Donante.activo == activo)
     if q and q.strip():
-        patron = f"%{q.strip().lower()}%"
+        # Se escapan los comodines para que "%" o "_" se busquen como texto literal.
+        literal = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        patron = f"%{literal}%"
         consulta = consulta.where(
-            func.lower(Donante.nombre).like(patron) | func.lower(Donante.contacto).like(patron)
+            Donante.nombre.ilike(patron, escape="\\") | Donante.contacto.ilike(patron, escape="\\")
         )
     return paginar(bd, consulta.order_by(Donante.nombre), pag)
 

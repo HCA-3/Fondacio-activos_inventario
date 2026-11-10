@@ -1,13 +1,13 @@
 """donantes
 
-Revisión: 0005_donantes
+Revisión: 0005
 Anterior: 0004
 """
 
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0005_donantes"
+revision = "0005"
 down_revision = "0004"
 branch_labels = None
 depends_on = None
@@ -41,9 +41,10 @@ def upgrade() -> None:
             ["creado_por"], ["usuarios.id"], name=op.f("fk_donantes_creado_por_usuarios")
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_donantes")),
-        sa.UniqueConstraint("nombre", name=op.f("uq_donantes_nombre")),
     )
+    op.create_index("uq_donantes_nombre_lower", "donantes", [sa.text("lower(nombre)")], unique=True)
 
 
 def downgrade() -> None:
+    op.drop_index("uq_donantes_nombre_lower", table_name="donantes")
     op.drop_table("donantes")
