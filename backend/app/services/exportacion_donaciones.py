@@ -1,6 +1,7 @@
 """Excel de donaciones: una hoja con las actas y otra con cada ítem recibido."""
 
 from collections.abc import Iterable
+from datetime import date
 from io import BytesIO
 
 from openpyxl import Workbook
@@ -13,10 +14,10 @@ ESTADOS = {"recibida": "Recibida", "anulada": "Anulada"}
 CONDICIONES = {"nuevo": "Nuevo", "usado": "Usado", "danado": "Dañado"}
 
 DONACIONES: list[Columna] = [
-    ("Fecha", _v("donationDate")),
+    ("Fecha", lambda f: date.fromisoformat(f["donationDate"])),
     ("Donante", _v("donorName")),
     ("Sede", _v("sede")),
-    ("Estado", lambda f: ESTADOS[f["status"]]),
+    ("Estado", lambda f: ESTADOS.get(f["status"], f["status"])),
     ("Ítems", lambda f: len(f["items"])),
     ("Unidades", lambda f: sum(i["quantity"] for i in f["items"])),
     ("Valor total estimado (COP)", _v("totalEstimated")),
@@ -25,16 +26,21 @@ DONACIONES: list[Columna] = [
 
 # Cada fila es un ítem con los datos de su donación (ver `_filas_de_items`).
 ITEMS: list[Columna] = [
-    ("Fecha", _v("donationDate")),
+    ("Fecha", lambda f: date.fromisoformat(f["donationDate"])),
     ("Donante", _v("donorName")),
     ("Sede", _v("sede")),
-    ("Estado de la donación", lambda f: ESTADOS[f["status"]]),
+    ("Estado de la donación", lambda f: ESTADOS.get(f["status"], f["status"])),
     ("Ítem", _v("name")),
     ("Categoría", _v("categoryName")),
     ("Cantidad", _v("quantity")),
-    ("Estado del ítem", lambda f: CONDICIONES[f["condition"]]),
+    ("Estado del ítem", lambda f: CONDICIONES.get(f["condition"], f["condition"])),
     ("Valor unitario (COP)", lambda f: f["estimatedUnitValue"]),
-    ("Valor total (COP)", lambda f: f["quantity"] * (f["estimatedUnitValue"] or 0)),
+    (
+        "Valor total (COP)",
+        lambda f: (
+            None if f["estimatedUnitValue"] is None else f["quantity"] * f["estimatedUnitValue"]
+        ),
+    ),
     ("Descripción", _v("description")),
 ]
 

@@ -1,3 +1,4 @@
+from datetime import datetime
 from io import BytesIO
 
 from fastapi.testclient import TestClient
@@ -65,7 +66,7 @@ def test_el_excel_trae_una_hoja_de_donaciones_y_otra_de_items(cliente_admin: Tes
     # Las más recientes primero, como en el listado.
     anulada, recibida = hojas["Donaciones"]
     assert recibida == {
-        "Fecha": "2026-02-10",
+        "Fecha": datetime(2026, 2, 10),
         "Donante": "Colegio San José",
         "Sede": "Altos del Cabo",
         "Estado": "Recibida",
@@ -78,7 +79,7 @@ def test_el_excel_trae_una_hoja_de_donaciones_y_otra_de_items(cliente_admin: Tes
     assert anulada["Valor total estimado (COP)"] == 200000
     balon, silla, mesa = hojas["Ítems"]
     assert silla == {
-        "Fecha": "2026-02-10",
+        "Fecha": datetime(2026, 2, 10),
         "Donante": "Colegio San José",
         "Sede": "Altos del Cabo",
         "Estado de la donación": "Recibida",
@@ -91,7 +92,7 @@ def test_el_excel_trae_una_hoja_de_donaciones_y_otra_de_items(cliente_admin: Tes
         "Descripción": "Con ruedas",
     }
     assert (mesa["Ítem"], mesa["Categoría"], mesa["Estado del ítem"]) == ("Mesa", None, "Nuevo")
-    assert (mesa["Valor unitario (COP)"], mesa["Valor total (COP)"]) == (None, 0)
+    assert (mesa["Valor unitario (COP)"], mesa["Valor total (COP)"]) == (None, None)
     assert balon["Ítem"] == "Balón"
 
 
@@ -151,3 +152,20 @@ def test_consulta_puede_exportar_y_sin_sesion_no(
 ) -> None:
     assert cliente_consulta.get("/api/donaciones/export.xlsx").status_code == 200
     assert cliente.get("/api/donaciones/export.xlsx").status_code == 401
+
+
+def test_los_caracteres_de_control_no_rompen_la_descarga(cliente_admin: TestClient) -> None:
+    nueva_sede(cliente_admin)
+    nueva_donacion(
+        cliente_admin,
+        nuevo_donante(cliente_admin),
+        notes="Pegado desde Word\x0b con salto raro",
+        items=[{"name": "Silla\x07", "description": "Con\x1bruedas"}],
+    )
+
+    respuesta = cliente_admin.get("/api/donaciones/export.xlsx")
+
+    assert respuesta.status_code == 200
+    libro = load_workbook(BytesIO(respuesta.content))
+    assert libro["Donaciones"]["H2"].value == "Pegado desde Word con salto raro"
+    assert libro["Ítems"]["E2"].value == "Silla"

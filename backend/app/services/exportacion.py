@@ -6,6 +6,7 @@ from typing import Any
 
 from openpyxl import Workbook
 from openpyxl.cell import WriteOnlyCell
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.worksheet.worksheet import Worksheet
 
 from app.models import Equipo
@@ -158,6 +159,9 @@ TABLETS: list[Columna] = [
 
 
 def _celda(hoja: Worksheet, valor: Any) -> Any:
+    if isinstance(valor, str):
+        # Un carácter de control pegado desde Word o un PDF haría fallar todo el archivo.
+        valor = ILLEGAL_CHARACTERS_RE.sub("", valor)
     if isinstance(valor, str) and valor.startswith("="):
         # Sin esto Excel ejecutaría como fórmula un texto escrito por un usuario.
         celda = WriteOnlyCell(hoja, value=valor)
