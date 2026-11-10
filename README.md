@@ -100,6 +100,7 @@ Fondacio-activos_inventario/
 │       ├── maintenance.js    # Mantenimientos y bitácora técnica de soporte
 │       ├── sedes.js          # Administración de sedes institucionales
 │       ├── diagnostico.js    # Auditoría de software, licencias y tablets
+│       ├── donaciones.js     # Donaciones, donantes, categorías, comprobantes y conversión a equipos
 │       └── customizer.js     # Personalizador de colores y marca institucional
 ├── docs/                     # Documentación técnica oficial del proyecto
 │   ├── GUIA-MIGRACION-FRONTEND.md             # Especificación técnica del contrato de la API

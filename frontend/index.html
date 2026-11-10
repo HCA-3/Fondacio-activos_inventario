@@ -77,6 +77,11 @@
           <span>Diagnóstico & Licencias</span>
         </a>
 
+        <a class="nav-item" data-view="donaciones" id="nav-donaciones">
+          <i data-lucide="gift"></i>
+          <span>Donaciones</span>
+        </a>
+
         <div class="nav-section-title">Personalización & Sistema</div>
 
         <a class="nav-item" onclick="openCustomizerModal()">
@@ -655,6 +660,153 @@
         <!-- VISTA 6: DIAGNÓSTICO DE SOFTWARE Y ADECUACIÓN TECNOLÓGICA -->
         <section class="view-section" id="view-diagnostico">
           <!-- Inyectado dinámicamente por js/diagnostico.js -->
+        </section>
+
+        <!-- VISTA 7: DONACIONES (sección mínima que muestra el módulo del backend) -->
+        <section class="view-section" id="view-donaciones">
+          <div class="toolbar-card">
+            <div class="toolbar-row">
+              <div class="filter-group">
+                <button class="btn btn-sm btn-primary donation-tab-btn active" data-tab="list" onclick="showDonationsTab('list')">Donaciones</button>
+                <button class="btn btn-sm btn-secondary donation-tab-btn" data-tab="donors" onclick="showDonationsTab('donors')">Donantes</button>
+                <button class="btn btn-sm btn-secondary donation-tab-btn" data-tab="categories" onclick="showDonationsTab('categories')">Categorías</button>
+              </div>
+              <span class="asset-code-badge" id="donations-month-summary" title="Datos de GET /api/dashboard (sin anuladas)">Este mes: -</span>
+            </div>
+          </div>
+
+          <!-- Pestaña: lista de donaciones -->
+          <div id="donations-tab-list">
+            <div class="toolbar-card">
+              <div class="toolbar-row">
+                <div class="search-input-wrap">
+                  <i data-lucide="search"></i>
+                  <input type="text" id="donation-filter-q" placeholder="Buscar en los ítems (nombre o descripción)..." />
+                </div>
+                <div class="filter-group">
+                  <select class="select-filter" id="donation-filter-donor"></select>
+                  <select class="select-filter" id="donation-filter-sede"></select>
+                  <select class="select-filter" id="donation-filter-category"></select>
+                  <select class="select-filter" id="donation-filter-status">
+                    <option value="">Todos los estados</option>
+                    <option value="recibida">Recibida</option>
+                    <option value="anulada">Anulada</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="toolbar-row" style="padding-top: 0.5rem; border-top: 1px solid var(--border-subtle);">
+                <div class="filter-group" style="align-items: center;">
+                  <label for="donation-filter-from" style="font-size: 0.78rem; color: var(--text-secondary);">Desde</label>
+                  <input type="date" class="select-filter" id="donation-filter-from" />
+                  <label for="donation-filter-to" style="font-size: 0.78rem; color: var(--text-secondary);">Hasta</label>
+                  <input type="date" class="select-filter" id="donation-filter-to" />
+                  <span class="asset-code-badge" id="donations-count-badge">0 donaciones</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <button class="btn btn-secondary btn-sm" onclick="resetDonationFilters()">Limpiar filtros</button>
+                  <button class="btn btn-secondary btn-sm" onclick="exportDonationsToExcel()">
+                    <i data-lucide="file-spreadsheet"></i>
+                    <span>Exportar Excel</span>
+                  </button>
+                  <button class="btn btn-primary btn-sm admin-only" data-admin-only onclick="openNewDonationModal()">
+                    <i data-lucide="plus"></i>
+                    <span>Nueva Donación</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive" id="donations-table-wrap">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Donante</th>
+                    <th>Sede</th>
+                    <th>Ítems</th>
+                    <th>Total estimado</th>
+                    <th>Estado</th>
+                    <th style="text-align: right;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="donations-table-body">
+                  <!-- Inyectado por js/donaciones.js -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="empty-state" id="donations-empty-state" style="display: none;">
+              <div class="empty-state-icon">
+                <i data-lucide="gift"></i>
+              </div>
+              <h3>No hay donaciones que coincidan</h3>
+              <p>Cambia los filtros o registra una nueva donación.</p>
+            </div>
+
+            <div class="toolbar-row" style="margin-top: 0.75rem;">
+              <span style="font-size: 0.8rem; color: var(--text-secondary);" id="donations-page-info"></span>
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-secondary btn-sm" id="donations-prev-btn" onclick="changeDonationsPage(-1)">Anterior</button>
+                <button class="btn btn-secondary btn-sm" id="donations-next-btn" onclick="changeDonationsPage(1)">Siguiente</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pestaña: donantes -->
+          <div id="donations-tab-donors" style="display: none;">
+            <div class="toolbar-card">
+              <div class="toolbar-row">
+                <div class="search-input-wrap">
+                  <i data-lucide="search"></i>
+                  <input type="text" id="donor-filter-q" placeholder="Buscar por nombre o contacto..." />
+                </div>
+                <button class="btn btn-primary btn-sm admin-only" data-admin-only onclick="openDonorModal()">
+                  <i data-lucide="user-plus"></i>
+                  <span>Nuevo Donante</span>
+                </button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Contacto</th>
+                    <th>Estado</th>
+                    <th style="text-align: right;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="donors-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Pestaña: categorías -->
+          <div id="donations-tab-categories" style="display: none;">
+            <div class="toolbar-card admin-only" data-admin-only>
+              <form class="toolbar-row" id="form-category" style="justify-content: flex-start;">
+                <input type="text" id="category-new-name" class="form-control" style="max-width: 320px;" placeholder="Nombre de la nueva categoría" required maxlength="300" />
+                <button type="submit" class="btn btn-primary btn-sm">
+                  <i data-lucide="plus"></i>
+                  <span>Agregar Categoría</span>
+                </button>
+              </form>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Estado</th>
+                    <th style="text-align: right;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="categories-table-body"></tbody>
+              </table>
+            </div>
+          </div>
         </section>
 
       </div>
@@ -1550,6 +1702,232 @@
     </div>
   </div>
 
+  <!-- MODAL: DETALLE DE DONACIÓN (ítems, comprobante y conversión a equipo) -->
+  <div class="modal-overlay" id="modal-donation-detail">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="gift" style="color: var(--primary-500);"></i>
+          <span>Detalle de la Donación</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-donation-detail')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" id="donation-detail-content">
+        <!-- Inyectado por js/donaciones.js -->
+      </div>
+
+      <div class="modal-footer" id="donation-detail-footer">
+        <!-- Botones según el estado y el rol -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREAR / EDITAR DONACIÓN -->
+  <div class="modal-overlay" id="modal-donation-form">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="gift" style="color: var(--primary-500);"></i>
+          <span id="modal-donation-title">Registrar Donación</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-donation-form')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="form-donation">
+        <div class="modal-body">
+          <div id="donation-form-error" class="form-error-banner" style="display: none;"></div>
+          <input type="hidden" id="donation-id" />
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="donation-donor">Donante <span class="required">*</span></label>
+              <div style="display: flex; gap: 0.5rem;">
+                <select id="donation-donor" class="form-control" required></select>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openDonorModal(null, true)" title="Registrar un donante nuevo">
+                  <i data-lucide="user-plus"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="donation-sede">Sede destino <span class="required">*</span></label>
+              <select id="donation-sede" class="form-control" required></select>
+            </div>
+
+            <div class="form-group">
+              <label for="donation-date">Fecha de la donación <span class="required">*</span></label>
+              <input type="date" id="donation-date" class="form-control" required />
+              <small style="font-size: 0.72rem; color: var(--text-secondary);">No puede ser una fecha futura.</small>
+            </div>
+
+            <div class="form-group">
+              <label>Total estimado</label>
+              <div class="asset-code-badge" id="donation-form-total" style="align-self: flex-start; font-size: 0.95rem;">$ 0</div>
+            </div>
+
+            <div class="form-group col-span-2">
+              <label for="donation-notes">Notas</label>
+              <textarea id="donation-notes" class="form-control" maxlength="5000" placeholder="Ej: Entregado por la empresa en la jornada de voluntariado."></textarea>
+            </div>
+
+            <div class="form-section-banner" style="justify-content: space-between;">
+              <span>Ítems recibidos (al menos uno)</span>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addDonationItemRow()">
+                <i data-lucide="plus"></i> Agregar ítem
+              </button>
+            </div>
+
+            <div class="col-span-2" id="donation-items-container" style="grid-column: span 2; display: flex; flex-direction: column; gap: 0.5rem;">
+              <!-- Filas de ítems inyectadas por js/donaciones.js -->
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-donation-form')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-donation">
+            <i data-lucide="save"></i>
+            <span>Guardar Donación</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CREAR / EDITAR DONANTE -->
+  <div class="modal-overlay" id="modal-donor-form">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="user-plus" style="color: var(--primary-500);"></i>
+          <span id="modal-donor-title">Registrar Donante</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-donor-form')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="form-donor">
+        <div class="modal-body">
+          <div id="donor-form-error" class="form-error-banner" style="display: none;"></div>
+          <input type="hidden" id="donor-id" />
+          <div class="form-grid">
+            <div class="form-group col-span-2">
+              <label for="donor-name">Nombre <span class="required">*</span></label>
+              <input type="text" id="donor-name" class="form-control" required maxlength="300" placeholder="Ej: Universidad Católica" />
+            </div>
+            <div class="form-group">
+              <label for="donor-type">Tipo</label>
+              <select id="donor-type" class="form-control">
+                <option value="persona">Persona</option>
+                <option value="empresa">Empresa</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="donor-active">Estado</label>
+              <select id="donor-active" class="form-control">
+                <option value="true">Activo</option>
+                <option value="false">Inactivo</option>
+              </select>
+            </div>
+            <div class="form-group col-span-2">
+              <label for="donor-contact">Contacto</label>
+              <input type="text" id="donor-contact" class="form-control" maxlength="300" placeholder="Teléfono, correo o persona de contacto" />
+            </div>
+            <div class="form-group col-span-2">
+              <label for="donor-notes">Notas</label>
+              <textarea id="donor-notes" class="form-control" maxlength="5000"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-donor-form')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i data-lucide="check"></i>
+            <span>Guardar Donante</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CONVERTIR UN ÍTEM DONADO EN EQUIPO -->
+  <div class="modal-overlay" id="modal-donation-convert">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="monitor" style="color: var(--primary-500);"></i>
+          <span>Convertir ítem en equipo</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modal-donation-convert')">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="form-donation-convert">
+        <div class="modal-body">
+          <div id="convert-form-error" class="form-error-banner" style="display: none;"></div>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1rem;" id="convert-item-summary"></p>
+          <input type="hidden" id="convert-donation-id" />
+          <input type="hidden" id="convert-item-id" />
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="convert-code">Placa <span class="required">*</span></label>
+              <input type="text" id="convert-code" class="form-control" required maxlength="50" placeholder="Ej: FND-POT-020" />
+            </div>
+            <div class="form-group">
+              <label for="convert-type">Tipo de equipo</label>
+              <select id="convert-type" class="form-control">
+                <option value="PORTÁTIL">PORTÁTIL</option>
+                <option value="TABLET">TABLET</option>
+                <option value="ALL IN ONE">ALL IN ONE</option>
+                <option value="TORRE / ESCRITORIO">TORRE / ESCRITORIO</option>
+                <option value="SERVIDOR">SERVIDOR</option>
+                <option value="MINIPC">MINIPC</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="convert-brand">Marca</label>
+              <input type="text" id="convert-brand" class="form-control" maxlength="300" />
+            </div>
+            <div class="form-group">
+              <label for="convert-model">Modelo</label>
+              <input type="text" id="convert-model" class="form-control" maxlength="300" />
+            </div>
+            <div class="form-group">
+              <label for="convert-serial">Serial</label>
+              <input type="text" id="convert-serial" class="form-control" maxlength="300" />
+            </div>
+            <div class="form-group">
+              <label for="convert-status">Estado inicial</label>
+              <select id="convert-status" class="form-control">
+                <option value="operativo">Operativo</option>
+                <option value="bodega">En bodega</option>
+              </select>
+            </div>
+            <div class="form-group col-span-2">
+              <label for="convert-value">Valor estimado (COP)</label>
+              <input type="number" id="convert-value" class="form-control" min="0" step="1" />
+              <small style="font-size: 0.72rem; color: var(--text-secondary);">El equipo queda en la sede de la donación.</small>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-donation-convert')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i data-lucide="check"></i>
+            <span>Crear Equipo</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: LOGIN / INICIO DE SESIÓN OBLIGATORIO -->
   <div id="login-overlay" class="login-overlay">
     <div class="login-card">
@@ -1594,6 +1972,7 @@
   <script src="js/loans.js"></script>
   <script src="js/maintenance.js"></script>
   <script src="js/diagnostico.js"></script>
+  <script src="js/donaciones.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

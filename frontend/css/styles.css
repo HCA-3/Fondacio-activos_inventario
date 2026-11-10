@@ -1747,3 +1747,13 @@ body.role-consulta [data-admin-only] {
   text-transform: capitalize;
 }
 
+/* Aviso de error dentro de un formulario o detalle (donaciones). */
+.form-error-banner {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+}

@@ -405,6 +405,114 @@ class DataStoreAPI {
     });
   }
 
+  // --- DONANTES ---
+  async getDonors({ active } = {}) {
+    const params = new URLSearchParams({ limit: '500' });
+    if (active !== undefined) params.append('activo', String(active));
+    const res = await api(`/api/donantes?${params.toString()}`);
+    return res.items || [];
+  }
+
+  async saveDonor(donor) {
+    const payload = {
+      name: donor.name,
+      type: donor.type || 'persona',
+      contact: donor.contact || '',
+      notes: donor.notes || '',
+      active: donor.active !== false
+    };
+    if (donor.id) {
+      return await api(`/api/donantes/${donor.id}`, { method: 'PATCH', body: payload });
+    }
+    return await api('/api/donantes', { method: 'POST', body: payload });
+  }
+
+  // --- CATEGORÍAS DE ÍTEMS DONADOS ---
+  async getCategories({ active } = {}) {
+    const params = new URLSearchParams({ limit: '500' });
+    if (active !== undefined) params.append('active', String(active));
+    const res = await api(`/api/categorias?${params.toString()}`);
+    return res.items || [];
+  }
+
+  async createCategory(name) {
+    return await api('/api/categorias', { method: 'POST', body: { name } });
+  }
+
+  async updateCategory(id, updates) {
+    return await api(`/api/categorias/${id}`, { method: 'PATCH', body: updates });
+  }
+
+  async deleteCategory(id) {
+    await api(`/api/categorias/${id}`, { method: 'DELETE' });
+    return { success: true };
+  }
+
+  // --- DONACIONES ---
+  // filters: {desde, hasta, donante, sede, estado, categoria, q}; los vacíos no se envían.
+  donationFilterParams(filters = {}) {
+    const params = new URLSearchParams();
+    for (const [clave, valor] of Object.entries(filters)) {
+      if (valor && String(valor).trim()) params.append(clave, String(valor).trim());
+    }
+    return params;
+  }
+
+  async getDonations(filters = {}, limit = 20, offset = 0) {
+    const params = this.donationFilterParams(filters);
+    params.append('limit', String(limit));
+    params.append('offset', String(offset));
+    return await api(`/api/donaciones?${params.toString()}`);
+  }
+
+  async getDonationById(id) {
+    return await api(`/api/donaciones/${id}`);
+  }
+
+  async createDonation(donation) {
+    return await api('/api/donaciones', { method: 'POST', body: donation });
+  }
+
+  async updateDonation(id, changes) {
+    return await api(`/api/donaciones/${id}`, { method: 'PATCH', body: changes });
+  }
+
+  async voidDonation(id) {
+    return await api(`/api/donaciones/${id}/anular`, { method: 'POST' });
+  }
+
+  async convertDonationItem(donationId, itemId, assetData) {
+    return await api(`/api/donaciones/${donationId}/items/${itemId}/equipo`, {
+      method: 'POST',
+      body: assetData
+    });
+  }
+
+  async uploadDonationReceipt(donationId, file) {
+    const res = await fetch(`/api/donaciones/${donationId}/comprobante`, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file
+    });
+    if (res.status === 401) {
+      if (typeof mostrarLogin === 'function') mostrarLogin();
+      throw new Error('Sesión vencida o no iniciada');
+    }
+    const datos = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const detalle = Array.isArray(datos.detail)
+        ? datos.detail.map(e => e.msg).join('. ')
+        : datos.detail;
+      throw new Error(detalle || `Error al subir el comprobante (${res.status})`);
+    }
+    return datos;
+  }
+
+  async deleteDonationReceipt(donationId) {
+    await api(`/api/donaciones/${donationId}/comprobante`, { method: 'DELETE' });
+    return { success: true };
+  }
+
   // --- CONFIGURACIÓN Y DASHBOARD ---
   async getDashboardStats() {
     return await api('/api/dashboard');

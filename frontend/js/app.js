@@ -235,6 +235,7 @@ function initApp() {
   initLoansModule();
   initMaintenanceModule();
   initDiagnosticoModule();
+  initDonacionesModule();
   initBackupModule();
 
   // Cargar vista inicial
@@ -334,6 +335,7 @@ function navigateTo(viewId) {
     prestamos: { title: 'Asignaciones y Préstamos', sub: 'Control de custodios, beneficiarios y actas de entrega' },
     mantenimiento: { title: 'Mantenimientos y Soporte Técnico', sub: 'Bitácora técnica, servicios preventivos y correctivos' },
     diagnostico: { title: 'Diagnóstico de Software, Licencias y Tablets', sub: 'Auditoría de sistemas operativos, activación, parches y mitigación de obsolescencia' },
+    donaciones: { title: 'Donaciones Recibidas', sub: 'Actas de donación con sus ítems, donantes, categorías, comprobantes y conversión a equipos' },
     respaldo: { title: 'Base de Datos y Configuración', sub: 'Sincronización con el servidor central, exportación oficial y datos de la fundación' }
   };
 
@@ -356,6 +358,8 @@ function navigateTo(viewId) {
     renderMaintenanceList();
   } else if (viewId === 'diagnostico') {
     renderDiagnosticoView();
+  } else if (viewId === 'donaciones') {
+    renderDonacionesView();
   } else if (viewId === 'respaldo') {
     renderSettingsView();
   }
