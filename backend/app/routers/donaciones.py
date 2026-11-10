@@ -8,10 +8,11 @@ from sqlalchemy.orm import Session
 
 from app.db import BD
 from app.errores import NoEncontrado
-from app.models import Donacion, DonacionComprobante, Usuario
+from app.models import Donacion, DonacionComprobante, Equipo, Usuario
 from app.paginacion import Pag, paginar
 from app.schemas.base import Pagina
-from app.schemas.donacion import DonacionCambios, DonacionNueva, DonacionSalida
+from app.schemas.donacion import DonacionCambios, DonacionNueva, DonacionSalida, EquipoDeItem
+from app.schemas.equipo import EquipoDetalle
 from app.security import Admin, UsuarioActual
 from app.services import donaciones as servicio
 from app.services import imagenes
@@ -58,6 +59,21 @@ def actualizar(donacion_id: str, datos: DonacionCambios, bd: BD, admin: Admin) -
     )
     bd.commit()
     return donacion
+
+
+@router.post(
+    "/{donacion_id}/items/{item_id}/equipo",
+    response_model=EquipoDetalle,
+    status_code=status.HTTP_201_CREATED,
+)
+def convertir_en_equipo(
+    donacion_id: str, item_id: str, datos: EquipoDeItem, bd: BD, admin: Admin
+) -> Equipo:
+    equipo = servicio.convertir_item_en_equipo(
+        bd, _buscar(bd, donacion_id, bloquear=True), item_id, datos, admin
+    )
+    bd.commit()
+    return equipo
 
 
 @router.post("/{donacion_id}/anular", response_model=DonacionSalida)

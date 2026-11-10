@@ -4,7 +4,15 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.errores import Conflicto, DatoInvalido
-from app.models import Equipo, EquipoImagen, EstadoEquipo, Mantenimiento, Prestamo, Usuario
+from app.models import (
+    Equipo,
+    EquipoImagen,
+    EstadoEquipo,
+    ItemDonacion,
+    Mantenimiento,
+    Prestamo,
+    Usuario,
+)
 from app.models.equipo import ESTADOS_DEL_SISTEMA
 from app.models.mantenimiento import ESTADOS_ABIERTOS
 from app.models.prestamo import EstadoPrestamo
@@ -142,6 +150,11 @@ def borrar_equipo(bd: Session, equipo: Equipo, autor: Usuario) -> None:
         raise Conflicto(
             "El equipo tiene historial de préstamos o mantenimientos y no se puede borrar. "
             "Márcalo como dado de baja"
+        )
+    # Un equipo que viene de una donación se conserva: si no, su ítem perdería el vínculo.
+    if bd.scalar(select(ItemDonacion.id).where(ItemDonacion.equipo_id == equipo.id).limit(1)):
+        raise Conflicto(
+            "El equipo viene de una donación y no se puede borrar. Márcalo como dado de baja"
         )
     registrar(bd, autor, "borrar", "equipos", equipo.id, {"placa": equipo.placa})
     bd.delete(equipo)

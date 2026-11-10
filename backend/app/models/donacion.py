@@ -111,6 +111,10 @@ class ItemDonacion(Base):
     # Pesos colombianos por unidad.
     valor_unitario: Mapped[int | None] = mapped_column(BigInteger)
     descripcion: Mapped[str] = mapped_column(Text, server_default="")
+    # Equipo del inventario en que se convirtió el ítem; con él el ítem queda bloqueado.
+    equipo_id: Mapped[str | None] = mapped_column(
+        ForeignKey("equipos.id", ondelete="SET NULL"), unique=True
+    )
 
     categoria: Mapped[Categoria | None] = relationship(lazy="selectin")
 

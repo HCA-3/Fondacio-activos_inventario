@@ -9,13 +9,20 @@ from app.models import (
     Donacion,
     DonacionComprobante,
     Donante,
+    Equipo,
     ItemDonacion,
     Usuario,
 )
 from app.models.donacion import EstadoDonacion
 from app.schemas.categoria import CategoriaNueva
-from app.schemas.donacion import DonacionCambios, DonacionNueva, ItemNuevo
-from app.services import categorias, imagenes
+from app.schemas.donacion import (
+    DonacionCambios,
+    DonacionNueva,
+    EquipoDeItem,
+    ItemCambio,
+    ItemNuevo,
+)
+from app.services import categorias, equipos, imagenes
 from app.services.auditoria import registrar
 from app.services.comun import aplicar_cambios, marcar_autor, resolver_sede
 from app.tiempo import hoy
@@ -57,22 +64,78 @@ def _categoria_del_item(bd: Session, datos: ItemNuevo, autor: Usuario) -> Catego
     return None
 
 
+def _aplicar_item(
+    item: ItemDonacion, orden: int, datos: ItemNuevo, categoria: Categoria | None
+) -> None:
+    item.orden = orden
+    item.nombre = datos.name
+    item.categoria = categoria
+    item.cantidad = datos.quantity
+    item.estado = datos.condition
+    item.valor_unitario = datos.estimated_unit_value
+    item.descripcion = datos.description
+
+
 def _construir_items(bd: Session, datos: list[ItemNuevo], autor: Usuario) -> list[ItemDonacion]:
     items = []
-    for orden, item in enumerate(datos):
-        categoria = _categoria_del_item(bd, item, autor)
-        items.append(
-            ItemDonacion(
-                orden=orden,
-                nombre=item.name,
-                categoria=categoria,
-                cantidad=item.quantity,
-                estado=item.condition,
-                valor_unitario=item.estimated_unit_value,
-                descripcion=item.description,
-            )
-        )
+    for orden, datos_item in enumerate(datos):
+        item = ItemDonacion()
+        _aplicar_item(item, orden, datos_item, _categoria_del_item(bd, datos_item, autor))
+        items.append(item)
     return items
+
+
+def _item_convertido_cambia(item: ItemDonacion, datos: ItemNuevo) -> bool:
+    if datos.category_id:
+        categoria_igual = datos.category_id == item.categoria_id
+    elif datos.new_category:
+        categoria_igual = datos.new_category.lower() == item.categoria_nombre.lower()
+    else:
+        categoria_igual = item.categoria_id is None
+    return not (
+        categoria_igual
+        and datos.name == item.nombre
+        and datos.quantity == item.cantidad
+        and datos.condition == item.estado
+        and datos.estimated_unit_value == item.valor_unitario
+        and datos.description == item.descripcion
+    )
+
+
+def _reemplazar_items(
+    bd: Session, donacion: Donacion, datos: list[ItemCambio], autor: Usuario
+) -> None:
+    """Los ítems con id se actualizan en su sitio, los demás se crean y los omitidos se quitan.
+
+    Un ítem convertido en equipo no se puede quitar ni modificar.
+    """
+    actuales = {i.id: i for i in donacion.items}
+    nuevos = []
+    usados = set()
+    for orden, datos_item in enumerate(datos):
+        if not datos_item.id:
+            item = ItemDonacion()
+            _aplicar_item(item, orden, datos_item, _categoria_del_item(bd, datos_item, autor))
+        else:
+            item = actuales.get(datos_item.id)
+            if item is None or datos_item.id in usados:
+                raise DatoInvalido("items", f"El ítem {datos_item.id!r} no es de esta donación")
+            usados.add(item.id)
+            if item.equipo_id is None:
+                _aplicar_item(item, orden, datos_item, _categoria_del_item(bd, datos_item, autor))
+            elif datos_item.category_id and bd.get(Categoria, datos_item.category_id) is None:
+                raise DatoInvalido(
+                    "categoryId", f"No existe la categoría {datos_item.category_id!r}"
+                )
+            elif _item_convertido_cambia(item, datos_item):
+                raise Conflicto(f"El ítem {item.nombre!r} ya es un equipo y no se puede modificar")
+            else:
+                item.orden = orden
+        nuevos.append(item)
+    for item in actuales.values():
+        if item.id not in usados and item.equipo_id is not None:
+            raise Conflicto(f"El ítem {item.nombre!r} ya es un equipo y no se puede quitar")
+    donacion.items = nuevos
 
 
 def crear_donacion(bd: Session, datos: DonacionNueva, autor: Usuario) -> Donacion:
@@ -135,11 +198,38 @@ def actualizar_donacion(
             donacion.fecha = datos.donation_date
     if datos.items is not None:
         cambios["items"] = [len(donacion.items), len(datos.items)]
-        donacion.items = _construir_items(bd, datos.items, autor)
+        _reemplazar_items(bd, donacion, datos.items, autor)
     if cambios:
         _tocar(donacion, autor)
         registrar(bd, autor, "actualizar", "donaciones", donacion.id, cambios)
     return donacion
+
+
+def convertir_item_en_equipo(
+    bd: Session, donacion: Donacion, item_id: str, datos: EquipoDeItem, autor: Usuario
+) -> Equipo:
+    _exigir_recibida(donacion)
+    item = next((i for i in donacion.items if i.id == item_id), None)
+    if item is None:
+        raise NoEncontrado("Ítem no encontrado en esta donación")
+    if item.equipo_id is not None:
+        raise Conflicto(f"El ítem {item.nombre!r} ya se convirtió en equipo")
+    if item.cantidad != 1:
+        raise Conflicto("Solo se convierte en equipo un ítem de cantidad 1")
+    if not datos.sede:
+        datos = datos.model_copy(update={"sede": donacion.sede.nombre})
+    equipo = equipos.crear_equipo(bd, datos, autor)
+    item.equipo_id = equipo.id
+    _tocar(donacion, autor)
+    registrar(
+        bd,
+        autor,
+        "convertir",
+        "donaciones",
+        donacion.id,
+        {"item": item.nombre, "equipo": equipo.id, "placa": equipo.placa},
+    )
+    return equipo
 
 
 def anular_donacion(bd: Session, donacion: Donacion, autor: Usuario) -> Donacion:
