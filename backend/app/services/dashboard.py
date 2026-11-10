@@ -68,5 +68,5 @@ def calcular_panel(bd: Session) -> dict[str, Any]:
             .where(Mantenimiento.estado.in_(ESTADOS_ABIERTOS))
         ),
         "donations_this_month": bd.scalar(donaciones_del_mes),
-        "items_received_count": bd.scalar(items_recibidos),
+        "items_received_this_month": bd.scalar(items_recibidos),
     }

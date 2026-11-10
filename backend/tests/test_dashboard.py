@@ -30,7 +30,7 @@ def test_el_panel_vacio_devuelve_ceros(cliente_admin: TestClient) -> None:
         "overdueLoansCount": 0,
         "pendingMaintCount": 0,
         "donationsThisMonth": 0,
-        "itemsReceivedCount": 0,
+        "itemsReceivedThisMonth": 0,
     }
 
 
@@ -66,7 +66,7 @@ def test_el_panel_resume_el_inventario(cliente_admin: TestClient) -> None:
         "overdueLoansCount": 1,
         "pendingMaintCount": 1,
         "donationsThisMonth": 0,
-        "itemsReceivedCount": 0,
+        "itemsReceivedThisMonth": 0,
     }
 
 
@@ -90,7 +90,36 @@ def test_el_panel_cuenta_las_donaciones_del_mes_y_los_items_recibidos(
 
     # Las anuladas y las de meses anteriores no cuentan; los ítems suman cantidades.
     assert panel["donationsThisMonth"] == 2
-    assert panel["itemsReceivedCount"] == 12
+    assert panel["itemsReceivedThisMonth"] == 12
+
+
+def test_el_primer_dia_del_mes_cuenta_y_el_ultimo_del_mes_anterior_no(
+    cliente_admin: TestClient,
+) -> None:
+    admin = cliente_admin
+    nueva_sede(admin)
+    donante = nuevo_donante(admin)
+    primero = hoy().replace(day=1)
+    item = [{"name": "Silla", "quantity": 2}]
+    nueva_donacion(admin, donante, donationDate=primero.isoformat(), items=item)
+    nueva_donacion(
+        admin, donante, donationDate=(primero - timedelta(days=1)).isoformat(), items=item
+    )
+
+    panel = admin.get("/api/dashboard").json()
+
+    assert (panel["donationsThisMonth"], panel["itemsReceivedThisMonth"]) == (1, 2)
+
+
+def test_el_rol_consulta_ve_los_datos_de_donaciones(
+    cliente_admin: TestClient, cliente_consulta: TestClient
+) -> None:
+    nueva_sede(cliente_admin)
+    nueva_donacion(cliente_admin, nuevo_donante(cliente_admin))
+
+    panel = cliente_consulta.get("/api/dashboard").json()
+
+    assert (panel["donationsThisMonth"], panel["itemsReceivedThisMonth"]) == (1, 10)
 
 
 def test_el_rol_consulta_ve_el_panel(cliente_consulta: TestClient) -> None:

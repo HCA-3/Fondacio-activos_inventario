@@ -1,4 +1,8 @@
-"""Esquema del panel. Conserva los nombres de DataStore.getDashboardStats() del frontend."""
+"""Esquema del panel.
+
+Conserva los nombres de DataStore.getDashboardStats() del frontend; los campos de donaciones
+son nuevos y no vienen de ahí.
+"""
 
 from app.schemas.base import Salida
 
@@ -17,4 +21,4 @@ class Panel(Salida):
     overdue_loans_count: int
     pending_maint_count: int
     donations_this_month: int
-    items_received_count: int
+    items_received_this_month: int
