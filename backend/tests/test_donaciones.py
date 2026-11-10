@@ -462,3 +462,52 @@ def test_editar_un_item_con_id_lo_actualiza_en_su_sitio(cliente_admin: TestClien
     assert [(i["id"], i["name"], i["quantity"]) for i in editada["items"]] == [
         (item["id"], "Portátil HP", 2)
     ]
+
+
+def test_un_equipo_de_una_donacion_no_se_puede_borrar(cliente_admin: TestClient) -> None:
+    donacion, item = _donacion_de_un_portatil(cliente_admin)
+    equipo = cliente_admin.post(_ruta_equipo(donacion, item), json={"code": "PC-77"}).json()
+
+    borrado = cliente_admin.delete(f"/api/equipos/{equipo['id']}")
+
+    assert borrado.status_code == 409
+    vista = cliente_admin.get(f"/api/donaciones/{donacion['id']}").json()
+    assert vista["items"][0]["assetId"] == equipo["id"]
+
+
+def test_un_item_convertido_no_cambia_de_cantidad_ni_de_categoria(
+    cliente_admin: TestClient,
+) -> None:
+    donacion, item = _donacion_de_un_portatil(cliente_admin)
+    cliente_admin.post(_ruta_equipo(donacion, item), json={"code": "PC-77"})
+    ruta = f"/api/donaciones/{donacion['id']}"
+    mismo = {"id": item["id"], "name": "Portátil", "quantity": 1}
+
+    cantidad = cliente_admin.patch(ruta, json={"items": [mismo | {"quantity": 2}]})
+    categoria = cliente_admin.patch(ruta, json={"items": [mismo | {"newCategory": "Otra"}]})
+    repetido = cliente_admin.patch(ruta, json={"items": [mismo, mismo]})
+
+    assert (cantidad.status_code, categoria.status_code, repetido.status_code) == (409, 409, 422)
+
+
+def test_un_item_convertido_con_la_categoria_borrada_se_reenvia_sin_problema(
+    cliente_admin: TestClient,
+) -> None:
+    donante = _preparar(cliente_admin)
+    sillas = nueva_categoria(cliente_admin, "Equipos viejos")
+    donacion = nueva_donacion(
+        cliente_admin, donante, items=[{"name": "Portátil", "categoryId": sillas["id"]}]
+    )
+    item = donacion["items"][0]
+    cliente_admin.post(_ruta_equipo(donacion, item), json={"code": "PC-77"})
+    cliente_admin.delete(f"/api/categorias/{sillas['id']}")
+    ruta = f"/api/donaciones/{donacion['id']}"
+    reenviado = {"id": item["id"], "name": "Portátil", "quantity": 1}
+
+    como_lo_devolvio_la_api = cliente_admin.patch(ruta, json={"items": [reenviado]})
+    con_el_id_viejo = cliente_admin.patch(
+        ruta, json={"items": [reenviado | {"categoryId": sillas["id"]}]}
+    )
+
+    assert como_lo_devolvio_la_api.status_code == 200, como_lo_devolvio_la_api.text
+    assert con_el_id_viejo.status_code == 422

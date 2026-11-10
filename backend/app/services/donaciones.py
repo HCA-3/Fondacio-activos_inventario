@@ -56,7 +56,9 @@ def _categoria_del_item(bd: Session, datos: ItemNuevo, autor: Usuario) -> Catego
     return None
 
 
-def _aplicar_item(item: ItemDonacion, orden: int, datos: ItemNuevo, categoria) -> None:
+def _aplicar_item(
+    item: ItemDonacion, orden: int, datos: ItemNuevo, categoria: Categoria | None
+) -> None:
     item.orden = orden
     item.nombre = datos.name
     item.categoria = categoria
@@ -113,6 +115,10 @@ def _reemplazar_items(
             usados.add(item.id)
             if item.equipo_id is None:
                 _aplicar_item(item, orden, datos_item, _categoria_del_item(bd, datos_item, autor))
+            elif datos_item.category_id and bd.get(Categoria, datos_item.category_id) is None:
+                raise DatoInvalido(
+                    "categoryId", f"No existe la categoría {datos_item.category_id!r}"
+                )
             elif _item_convertido_cambia(item, datos_item):
                 raise Conflicto(f"El ítem {item.nombre!r} ya es un equipo y no se puede modificar")
             else:

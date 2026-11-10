@@ -10,7 +10,6 @@ from app.db import Base
 from app.models.categoria import Categoria
 from app.models.comun import Trazable, nuevo_id
 from app.models.donante import Donante
-from app.models.equipo import Equipo  # noqa: F401  (resuelve la clave foránea de equipo_id)
 from app.models.sede import Sede
 
 
