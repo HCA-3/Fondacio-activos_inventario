@@ -280,3 +280,15 @@ def test_altas_cambios_y_anulacion_quedan_en_auditoria(
     ).all()
 
     assert sorted(f.accion for f in filas) == ["actualizar", "anular", "crear"]
+
+
+def test_editar_solo_los_items_actualiza_la_fecha_de_cambio(cliente_admin: TestClient) -> None:
+    donante = _preparar(cliente_admin)
+    donacion = nueva_donacion(cliente_admin, donante)
+    cliente_admin.patch(f"/api/donaciones/{donacion['id']}", json={"notes": "Primera"})
+    antes = cliente_admin.get(f"/api/donaciones/{donacion['id']}").json()["updatedAt"]
+
+    cliente_admin.patch(f"/api/donaciones/{donacion['id']}", json={"items": [{"name": "Balón"}]})
+
+    despues = cliente_admin.get(f"/api/donaciones/{donacion['id']}").json()["updatedAt"]
+    assert despues > antes

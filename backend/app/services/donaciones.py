@@ -91,6 +91,12 @@ def crear_donacion(bd: Session, datos: DonacionNueva, autor: Usuario) -> Donacio
     return donacion
 
 
+def _tocar(donacion: Donacion, autor: Usuario) -> None:
+    """Marca autor y fecha de cambio; los ítems no tocan la fila de la donación por sí solos."""
+    marcar_autor(donacion, autor)
+    donacion.actualizado_en = func.clock_timestamp()
+
+
 def _exigir_recibida(donacion: Donacion) -> None:
     if donacion.estado != EstadoDonacion.RECIBIDA:
         raise Conflicto("La donación está anulada y no se puede modificar")
@@ -119,7 +125,7 @@ def actualizar_donacion(
         cambios["items"] = [len(donacion.items), len(datos.items)]
         donacion.items = _construir_items(bd, datos.items, autor)
     if cambios:
-        marcar_autor(donacion, autor)
+        _tocar(donacion, autor)
         registrar(bd, autor, "actualizar", "donaciones", donacion.id, cambios)
     return donacion
 
@@ -127,6 +133,6 @@ def actualizar_donacion(
 def anular_donacion(bd: Session, donacion: Donacion, autor: Usuario) -> Donacion:
     _exigir_recibida(donacion)
     donacion.estado = EstadoDonacion.ANULADA
-    marcar_autor(donacion, autor)
+    _tocar(donacion, autor)
     registrar(bd, autor, "anular", "donaciones", donacion.id)
     return donacion
