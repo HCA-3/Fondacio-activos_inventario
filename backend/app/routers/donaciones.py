@@ -1,8 +1,9 @@
 """Donaciones."""
 
-from fastapi import APIRouter, Request, Response, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import BD
@@ -14,6 +15,7 @@ from app.schemas.donacion import DonacionCambios, DonacionNueva, DonacionSalida
 from app.security import Admin, UsuarioActual
 from app.services import donaciones as servicio
 from app.services import imagenes
+from app.services.filtros_donaciones import FiltrosDeDonaciones
 
 router = APIRouter(prefix="/api/donaciones", tags=["donaciones"])
 
@@ -26,9 +28,12 @@ def _buscar(bd: BD, donacion_id: str, *, bloquear: bool = False) -> Donacion:
     return donacion
 
 
+Filtros = Annotated[FiltrosDeDonaciones, Depends()]
+
+
 @router.get("", response_model=Pagina[DonacionSalida])
-def listar(bd: BD, _: UsuarioActual, pag: Pag) -> dict:
-    consulta = select(Donacion).order_by(
+def listar(bd: BD, _: UsuarioActual, pag: Pag, filtros: Filtros) -> dict:
+    consulta = filtros.consulta().order_by(
         Donacion.fecha.desc(), Donacion.creado_en.desc(), Donacion.id
     )
     return paginar(bd, consulta, pag)
