@@ -1,9 +1,20 @@
 """Donaciones: actas de lo que la fundación recibe, con sus ítems. Nunca se borran, se anulan."""
 
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 
-from sqlalchemy import BigInteger, CheckConstraint, Date, ForeignKey, Index, Integer, Text
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    LargeBinary,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -37,6 +48,8 @@ class Donacion(Trazable, Base):
     fecha: Mapped[date] = mapped_column(Date)
     notas: Mapped[str] = mapped_column(Text, server_default="")
     estado: Mapped[str] = mapped_column(Text, default=EstadoDonacion.RECIBIDA)
+    # Dirección del comprobante subido, con su huella; vacía si no tiene.
+    comprobante: Mapped[str] = mapped_column(Text, server_default="")
 
     donante: Mapped[Donante] = relationship(lazy="selectin")
     sede: Mapped[Sede] = relationship(lazy="selectin")
@@ -58,6 +71,21 @@ class Donacion(Trazable, Base):
     def total_estimado(self) -> int:
         """Suma de cantidad por valor unitario; los ítems sin valor no suman."""
         return sum(i.cantidad * i.valor_unitario for i in self.items if i.valor_unitario)
+
+
+class DonacionComprobante(Base):
+    """Imagen del comprobante, ya reducida. Tabla aparte para no cargarla con la donación."""
+
+    __tablename__ = "donacion_comprobantes"
+
+    donacion_id: Mapped[str] = mapped_column(
+        ForeignKey("donaciones.id", ondelete="CASCADE"), primary_key=True
+    )
+    contenido: Mapped[bytes] = mapped_column(LargeBinary)
+    tipo: Mapped[str] = mapped_column(Text)
+    actualizado_en: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class ItemDonacion(Base):

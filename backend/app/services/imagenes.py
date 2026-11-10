@@ -3,6 +3,7 @@
 import hashlib
 from io import BytesIO
 
+from fastapi import HTTPException, Request, Response, status
 from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
@@ -42,14 +43,20 @@ def convertir_a_webp(contenido: bytes) -> bytes:
         raise DatoInvalido("imagen", "El archivo debe ser una imagen JPEG, PNG o WebP") from error
 
 
-def guardar_imagen(bd: Session, equipo: Equipo, contenido: bytes, autor: Usuario) -> Equipo:
+def guardar_webp(bd: Session, modelo: type, columna_id: str, id_: str, contenido: bytes) -> bytes:
+    """Convierte y guarda la imagen en la tabla de imágenes del modelo, reemplazando la anterior."""
     webp = convertir_a_webp(contenido)
-    fila = bd.get(EquipoImagen, equipo.id)
+    fila = bd.get(modelo, id_)
     if fila is None:
-        fila = EquipoImagen(equipo_id=equipo.id)
+        fila = modelo(**{columna_id: id_})
         bd.add(fila)
     fila.contenido = webp
     fila.tipo = "image/webp"
+    return webp
+
+
+def guardar_imagen(bd: Session, equipo: Equipo, contenido: bytes, autor: Usuario) -> Equipo:
+    webp = guardar_webp(bd, EquipoImagen, "equipo_id", equipo.id, contenido)
     # La huella en la dirección hace que el navegador pida la foto nueva al reemplazarla.
     equipo.imagen = f"{ruta_de_imagen(equipo)}?v={huella(webp)}"
     marcar_autor(equipo, autor)
@@ -65,3 +72,37 @@ def borrar_imagen(bd: Session, equipo: Equipo, autor: Usuario) -> None:
     equipo.imagen = ""
     marcar_autor(equipo, autor)
     registrar(bd, autor, "borrar_imagen", "equipos", equipo.id)
+
+
+async def leer_cuerpo(request: Request, maximo: int = MAX_BYTES) -> bytes:
+    """Lee el cuerpo sin pasarse del máximo, para no cargar en memoria un archivo enorme."""
+    demasiado = HTTPException(
+        status.HTTP_413_CONTENT_TOO_LARGE, f"La imagen supera los {maximo // (1024 * 1024)} MB"
+    )
+    declarado = request.headers.get("content-length", "")
+    if declarado.isdigit() and int(declarado) > maximo:
+        raise demasiado
+    partes: list[bytes] = []
+    total = 0
+    async for parte in request.stream():
+        total += len(parte)
+        if total > maximo:
+            raise demasiado
+        partes.append(parte)
+    return b"".join(partes)
+
+
+def responder_imagen(imagen, request: Request) -> Response:
+    """Respuesta de una imagen guardada (con `contenido` y `tipo`), con ETag y caché."""
+    etag = f'"{huella(imagen.contenido)}"'
+    cabeceras = {
+        "ETag": etag,
+        # Con ?v= la dirección cambia al cambiar la imagen, así que se puede guardar para siempre.
+        "Cache-Control": "private, max-age=31536000, immutable"
+        if "v" in request.query_params
+        else "private, no-cache",
+        "X-Content-Type-Options": "nosniff",
+    }
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=cabeceras)
+    return Response(imagen.contenido, media_type=imagen.tipo, headers=cabeceras)

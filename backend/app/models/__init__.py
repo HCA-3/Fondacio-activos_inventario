@@ -6,7 +6,13 @@ Cada modelo nuevo se importa aquí para que Alembic lo vea en Base.metadata.
 from app.models.auditoria import Auditoria
 from app.models.categoria import Categoria
 from app.models.configuracion import Configuracion
-from app.models.donacion import Donacion, EstadoDonacion, EstadoItem, ItemDonacion
+from app.models.donacion import (
+    Donacion,
+    DonacionComprobante,
+    EstadoDonacion,
+    EstadoItem,
+    ItemDonacion,
+)
 from app.models.donante import Donante, TipoDonante
 from app.models.equipo import Equipo, EquipoImagen, EstadoEquipo
 from app.models.mantenimiento import EstadoMantenimiento, Mantenimiento, TipoMantenimiento
@@ -19,6 +25,7 @@ __all__ = [
     "Categoria",
     "Configuracion",
     "Donacion",
+    "DonacionComprobante",
     "Donante",
     "Equipo",
     "EquipoImagen",
