@@ -8,6 +8,7 @@ from pydantic import Field, model_validator
 from app.models.donacion import EstadoDonacion, EstadoItem
 from app.schemas.base import Entrada, Salida
 from app.schemas.comunes import FechaOpcional, NoNulo, Texto, TextoLargo, TextoObligatorio
+from app.schemas.equipo import EquipoNuevo
 
 Cantidad = Annotated[int, Field(ge=1, le=1_000_000)]
 Pesos = Annotated[int, Field(ge=0, le=100_000_000_000)]
@@ -30,6 +31,18 @@ class ItemNuevo(Entrada):
         return self
 
 
+class ItemCambio(ItemNuevo):
+    """Ítem al editar: con `id` se actualiza el existente, sin él se crea uno nuevo."""
+
+    id: Texto = ""
+
+
+class EquipoDeItem(EquipoNuevo):
+    """Datos que faltan para convertir un ítem en equipo; sin sede se usa la de la donación."""
+
+    sede: Texto = ""
+
+
 class DonacionNueva(Entrada):
     donor_id: TextoObligatorio
     sede: TextoObligatorio
@@ -43,8 +56,9 @@ class DonacionCambios(Entrada):
     sede: Annotated[TextoObligatorio | None, NoNulo] = None
     donation_date: Annotated[date | None, NoNulo] = None
     notes: TextoLargo = ""
-    # Si viene, reemplaza la lista completa de ítems.
-    items: Annotated[list[ItemNuevo] | None, Field(min_length=1, max_length=200), NoNulo] = None
+    # Si viene, reemplaza la lista completa de ítems. Los ítems convertidos en equipo deben seguir
+    # en la lista, con su id y sin cambios.
+    items: Annotated[list[ItemCambio] | None, Field(min_length=1, max_length=200), NoNulo] = None
 
 
 class ItemSalida(Salida):
@@ -56,6 +70,7 @@ class ItemSalida(Salida):
     condition: EstadoItem = Field(validation_alias="estado")
     estimated_unit_value: int | None = Field(validation_alias="valor_unitario")
     description: str = Field(validation_alias="descripcion")
+    asset_id: str | None = Field(validation_alias="equipo_id")
 
 
 class DonacionSalida(Salida):

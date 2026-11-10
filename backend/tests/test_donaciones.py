@@ -6,7 +6,13 @@ from sqlalchemy.orm import Session
 
 from app.models import Auditoria
 from app.tiempo import hoy
-from tests.ayudas import nueva_categoria, nueva_donacion, nueva_sede, nuevo_donante
+from tests.ayudas import (
+    nueva_categoria,
+    nueva_donacion,
+    nueva_sede,
+    nuevo_donante,
+    nuevo_equipo,
+)
 
 
 def _preparar(cliente: TestClient) -> dict:
@@ -312,3 +318,147 @@ def test_un_donante_inactivo_no_recibe_donaciones_nuevas(cliente_admin: TestClie
 
     assert (al_crear.status_code, al_reasignar.status_code) == (409, 409)
     assert (vista.status_code, editada.status_code) == (200, 200)
+
+
+def _donacion_de_un_portatil(cliente: TestClient) -> tuple[dict, dict]:
+    donante = _preparar(cliente)
+    donacion = nueva_donacion(
+        cliente, donante, items=[{"name": "Portátil", "quantity": 1}, {"name": "Silla"}]
+    )
+    return donacion, donacion["items"][0]
+
+
+def _ruta_equipo(donacion: dict, item: dict) -> str:
+    return f"/api/donaciones/{donacion['id']}/items/{item['id']}/equipo"
+
+
+def test_convertir_un_item_en_equipo_usa_la_sede_de_la_donacion(
+    cliente_admin: TestClient,
+) -> None:
+    donacion, item = _donacion_de_un_portatil(cliente_admin)
+
+    respuesta = cliente_admin.post(
+        _ruta_equipo(donacion, item), json={"code": "pc-77", "brand": "Dell", "model": "7480"}
+    )
+
+    assert respuesta.status_code == 201, respuesta.text
+    equipo = respuesta.json()
+    assert (equipo["code"], equipo["sede"], equipo["brand"]) == ("PC-77", "Altos del Cabo", "Dell")
+    assert cliente_admin.get(f"/api/equipos/{equipo['id']}").status_code == 200
+    vista = cliente_admin.get(f"/api/donaciones/{donacion['id']}").json()
+    assert vista["items"][0]["assetId"] == equipo["id"]
+    assert vista["items"][1]["assetId"] is None
+
+
+def test_la_conversion_acepta_otra_sede_y_exige_placa_unica(cliente_admin: TestClient) -> None:
+    donacion, item = _donacion_de_un_portatil(cliente_admin)
+    nueva_sede(cliente_admin, "YLDC Potosí", code="POT")
+    nuevo_equipo(cliente_admin, "PC-01")
+
+    repetida = cliente_admin.post(_ruta_equipo(donacion, item), json={"code": "PC-01"})
+    sin_placa = cliente_admin.post(_ruta_equipo(donacion, item), json={})
+    otra = cliente_admin.post(
+        _ruta_equipo(donacion, item), json={"code": "PC-02", "sede": "YLDC Potosí"}
+    )
+
+    assert (repetida.status_code, sin_placa.status_code) == (409, 422)
+    assert otra.json()["sede"] == "YLDC Potosí"
+    vista = cliente_admin.get(f"/api/donaciones/{donacion['id']}").json()
+    assert vista["items"][0]["assetId"] == otra.json()["id"]
+
+
+def test_un_item_convertido_no_se_convierte_otra_vez(cliente_admin: TestClient) -> None:
+    donacion, item = _donacion_de_un_portatil(cliente_admin)
+    cliente_admin.post(_ruta_equipo(donacion, item), json={"code": "PC-77"})
+
+    otra_vez = cliente_admin.post(_ruta_equipo(donacion, item), json={"code": "PC-78"})
+
+    assert otra_vez.status_code == 409
+    assert cliente_admin.get("/api/equipos").json()["total"] == 1
+
+
+def test_no_se_convierte_un_item_de_mas_de_una_unidad(cliente_admin: TestClient) -> None:
+    donante = _preparar(cliente_admin)
+    donacion = nueva_donacion(cliente_admin, donante)
+
+    respuesta = cliente_admin.post(_ruta_equipo(donacion, donacion["items"][0]), json={"code": "S"})
+
+    assert respuesta.status_code == 409
+    assert cliente_admin.get("/api/equipos").json()["total"] == 0
+
+
+def test_no_se_convierte_en_una_donacion_anulada(cliente_admin: TestClient) -> None:
+    donacion, item = _donacion_de_un_portatil(cliente_admin)
+    cliente_admin.post(f"/api/donaciones/{donacion['id']}/anular")
+
+    respuesta = cliente_admin.post(_ruta_equipo(donacion, item), json={"code": "PC-77"})
+
+    assert respuesta.status_code == 409
+    assert cliente_admin.get("/api/equipos").json()["total"] == 0
+
+
+def test_la_conversion_busca_donacion_e_item_y_es_solo_de_admin(
+    cliente_admin: TestClient, cliente_consulta: TestClient
+) -> None:
+    donacion, item = _donacion_de_un_portatil(cliente_admin)
+
+    sin_donacion = cliente_admin.post(
+        f"/api/donaciones/nada/items/{item['id']}/equipo", json={"code": "A"}
+    )
+    sin_item = cliente_admin.post(
+        f"/api/donaciones/{donacion['id']}/items/nada/equipo", json={"code": "A"}
+    )
+    consulta = cliente_consulta.post(_ruta_equipo(donacion, item), json={"code": "A"})
+
+    assert (sin_donacion.status_code, sin_item.status_code, consulta.status_code) == (404, 404, 403)
+
+
+def test_la_conversion_queda_en_auditoria(cliente_admin: TestClient, bd: Session) -> None:
+    donacion, item = _donacion_de_un_portatil(cliente_admin)
+    equipo = cliente_admin.post(_ruta_equipo(donacion, item), json={"code": "PC-77"}).json()
+
+    filas = bd.scalars(
+        select(Auditoria).where(
+            Auditoria.entidad == "donaciones",
+            Auditoria.entidad_id == donacion["id"],
+            Auditoria.accion == "convertir",
+        )
+    ).all()
+
+    assert len(filas) == 1
+    assert filas[0].cambios["equipo"] == equipo["id"]
+
+
+def test_un_item_convertido_se_conserva_y_no_se_modifica_al_editar(
+    cliente_admin: TestClient,
+) -> None:
+    donacion, item = _donacion_de_un_portatil(cliente_admin)
+    equipo = cliente_admin.post(_ruta_equipo(donacion, item), json={"code": "PC-77"}).json()
+    ruta = f"/api/donaciones/{donacion['id']}"
+    mismo = {"id": item["id"], "name": "Portátil", "quantity": 1}
+
+    editada = cliente_admin.patch(
+        ruta, json={"items": [mismo, {"name": "Silla nueva"}, {"name": "Mesa"}]}
+    )
+    cambiada = cliente_admin.patch(ruta, json={"items": [mismo | {"name": "Otro nombre"}]})
+    quitada = cliente_admin.patch(ruta, json={"items": [{"name": "Solo silla"}]})
+    ajena = cliente_admin.patch(ruta, json={"items": [mismo, {"id": "ajeno", "name": "X"}]})
+
+    assert editada.status_code == 200, editada.text
+    nombres = [(i["name"], i["assetId"]) for i in editada.json()["items"]]
+    assert nombres == [("Portátil", equipo["id"]), ("Silla nueva", None), ("Mesa", None)]
+    assert editada.json()["items"][0]["id"] == item["id"]
+    assert (cambiada.status_code, quitada.status_code, ajena.status_code) == (409, 409, 422)
+
+
+def test_editar_un_item_con_id_lo_actualiza_en_su_sitio(cliente_admin: TestClient) -> None:
+    donacion, item = _donacion_de_un_portatil(cliente_admin)
+
+    editada = cliente_admin.patch(
+        f"/api/donaciones/{donacion['id']}",
+        json={"items": [{"id": item["id"], "name": "Portátil HP", "quantity": 2}]},
+    ).json()
+
+    assert [(i["id"], i["name"], i["quantity"]) for i in editada["items"]] == [
+        (item["id"], "Portátil HP", 2)
+    ]

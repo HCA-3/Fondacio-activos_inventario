@@ -10,6 +10,7 @@ from app.db import Base
 from app.models.categoria import Categoria
 from app.models.comun import Trazable, nuevo_id
 from app.models.donante import Donante
+from app.models.equipo import Equipo  # noqa: F401  (resuelve la clave foránea de equipo_id)
 from app.models.sede import Sede
 
 
@@ -83,6 +84,10 @@ class ItemDonacion(Base):
     # Pesos colombianos por unidad.
     valor_unitario: Mapped[int | None] = mapped_column(BigInteger)
     descripcion: Mapped[str] = mapped_column(Text, server_default="")
+    # Equipo del inventario en que se convirtió el ítem; con él el ítem queda bloqueado.
+    equipo_id: Mapped[str | None] = mapped_column(
+        ForeignKey("equipos.id", ondelete="SET NULL"), unique=True
+    )
 
     categoria: Mapped[Categoria | None] = relationship(lazy="selectin")
 
