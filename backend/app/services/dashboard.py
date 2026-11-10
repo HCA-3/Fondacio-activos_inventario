@@ -48,7 +48,7 @@ def calcular_panel(bd: Session) -> dict[str, Any]:
     items_recibidos = (
         select(func.coalesce(func.sum(ItemDonacion.cantidad), 0))
         .join(Donacion, Donacion.id == ItemDonacion.donacion_id)
-        .where(recibidas)
+        .where(recibidas, Donacion.fecha >= inicio_mes)
     )
     return {
         "total": sum(por_estado.values()),

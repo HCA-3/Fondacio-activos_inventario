@@ -88,9 +88,9 @@ def test_el_panel_cuenta_las_donaciones_del_mes_y_los_items_recibidos(
 
     panel = admin.get("/api/dashboard").json()
 
-    # Las anuladas no cuentan; los ítems suman cantidades, también los de meses anteriores.
+    # Las anuladas y las de meses anteriores no cuentan; los ítems suman cantidades.
     assert panel["donationsThisMonth"] == 2
-    assert panel["itemsReceivedCount"] == 22
+    assert panel["itemsReceivedCount"] == 12
 
 
 def test_el_rol_consulta_ve_el_panel(cliente_consulta: TestClient) -> None:
