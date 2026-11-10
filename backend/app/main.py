@@ -5,11 +5,12 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import obtener_ajustes
 from app.db import obtener_motor
-from app.errores import DatoInvalido, ErrorDeNegocio
+from app.errores import Conflicto, DatoInvalido, ErrorDeNegocio
 from app.models import Rol, Usuario
 from app.routers import (
     auth,
@@ -38,6 +39,15 @@ def _error_de_negocio(_: Request, error: ErrorDeNegocio) -> JSONResponse:
     return JSONResponse({"detail": error.detalle}, status_code=error.codigo)
 
 
+def _violacion_de_unicidad(_: Request, error: IntegrityError) -> JSONResponse:
+    # Dos peticiones simultáneas pueden pasar la comprobación previa y chocar con el índice único.
+    # Solo ese caso (SQLSTATE 23505) es un conflicto; llaves foráneas, checks y not null no lo son.
+    if getattr(error.orig, "sqlstate", None) != "23505":
+        raise error
+    detalle = "Ya existe un registro con ese valor; vuelve a intentarlo con otro"
+    return JSONResponse({"detail": detalle}, status_code=Conflicto.codigo)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Si la base no está en modo pruebas, asegura que exista el usuario admin inicial.
@@ -64,6 +74,7 @@ async def lifespan(app: FastAPI):
 def crear_app() -> FastAPI:
     app = FastAPI(title="Inventario Fondacio Colombia", lifespan=lifespan)
     app.add_exception_handler(ErrorDeNegocio, _error_de_negocio)
+    app.add_exception_handler(IntegrityError, _violacion_de_unicidad)
     for modulo in (
         salud,
         auth,
