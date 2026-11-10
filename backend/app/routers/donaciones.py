@@ -1,11 +1,15 @@
 """Donaciones."""
 
-from fastapi import APIRouter, status
-from sqlalchemy import select
+from datetime import date
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import Select, func, or_, select
 
 from app.db import BD
 from app.errores import NoEncontrado
-from app.models import Donacion
+from app.models import Categoria, Donacion, ItemDonacion, Sede
+from app.models.donacion import EstadoDonacion
 from app.paginacion import Pag, paginar
 from app.schemas.base import Pagina
 from app.schemas.donacion import DonacionCambios, DonacionNueva, DonacionSalida
@@ -13,6 +17,8 @@ from app.security import Admin, UsuarioActual
 from app.services import donaciones as servicio
 
 router = APIRouter(prefix="/api/donaciones", tags=["donaciones"])
+
+Filtro = Annotated[str | None, Query(max_length=100)]
 
 
 def _buscar(bd: BD, donacion_id: str, *, bloquear: bool = False) -> Donacion:
@@ -23,9 +29,83 @@ def _buscar(bd: BD, donacion_id: str, *, bloquear: bool = False) -> Donacion:
     return donacion
 
 
+def _patron(texto: str) -> str:
+    seguro = texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{seguro}%"
+
+
+class FiltrosDeDonaciones:
+    """Filtros de la lista. El historial de un donante es `?donante=<id>`."""
+
+    def __init__(
+        self,
+        desde: date | None = None,
+        hasta: date | None = None,
+        donante: Filtro = None,
+        sede: Filtro = None,
+        estado: EstadoDonacion | None = None,
+        categoria: Filtro = None,
+        q: Filtro = None,
+    ) -> None:
+        self.desde = desde
+        self.hasta = hasta
+        self.donante = donante
+        self.sede = sede
+        self.estado = estado
+        self.categoria = categoria
+        self.q = q.strip() if q else ""
+
+    def consulta(self) -> Select:
+        consulta = select(Donacion)
+        if self.desde:
+            consulta = consulta.where(Donacion.fecha >= self.desde)
+        if self.hasta:
+            consulta = consulta.where(Donacion.fecha <= self.hasta)
+        if self.donante:
+            consulta = consulta.where(Donacion.donante_id == self.donante)
+        if self.sede:
+            consulta = consulta.where(
+                Donacion.sede_id.in_(
+                    select(Sede.id).where(
+                        or_(Sede.id == self.sede, func.lower(Sede.nombre) == self.sede.lower())
+                    )
+                )
+            )
+        if self.estado:
+            consulta = consulta.where(Donacion.estado == self.estado)
+        if self.categoria or self.q:
+            # Un solo EXISTS: categoría y texto deben coincidir en el mismo ítem, y una
+            # donación con varios ítems que coinciden no sale repetida.
+            item = select(ItemDonacion.id).where(ItemDonacion.donacion_id == Donacion.id)
+            if self.categoria:
+                item = item.where(
+                    ItemDonacion.categoria_id.in_(
+                        select(Categoria.id).where(
+                            or_(
+                                Categoria.id == self.categoria,
+                                func.lower(Categoria.nombre) == self.categoria.lower(),
+                            )
+                        )
+                    )
+                )
+            if self.q:
+                patron = _patron(self.q)
+                item = item.where(
+                    or_(
+                        ItemDonacion.nombre.ilike(patron, escape="\\"),
+                        ItemDonacion.descripcion.ilike(patron, escape="\\"),
+                    )
+                )
+            consulta = consulta.where(item.exists())
+        return consulta
+
+
+Filtros = Annotated[FiltrosDeDonaciones, Depends()]
+
+
 @router.get("", response_model=Pagina[DonacionSalida])
-def listar(bd: BD, _: UsuarioActual, pag: Pag) -> dict:
-    consulta = select(Donacion).order_by(
+def listar(bd: BD, _: UsuarioActual, pag: Pag, filtros: Filtros) -> dict:
+    consulta = filtros.consulta().order_by(
         Donacion.fecha.desc(), Donacion.creado_en.desc(), Donacion.id
     )
     return paginar(bd, consulta, pag)
