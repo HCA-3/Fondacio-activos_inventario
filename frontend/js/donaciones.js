@@ -6,6 +6,8 @@
  */
 
 const DONATIONS_PAGE_SIZE = 20;
+const DONATION_FILTER_IDS = ['donation-filter-q', 'donation-filter-donor', 'donation-filter-sede',
+  'donation-filter-category', 'donation-filter-status', 'donation-filter-from', 'donation-filter-to'];
 const ITEM_CONDITIONS = { nuevo: 'Nuevo', usado: 'Usado', danado: 'Dañado' };
 const NEW_CATEGORY_OPTION = '__nueva__';
 
@@ -20,8 +22,7 @@ let donationItemRowCounter = 0;
 function initDonacionesModule() {
   const debouncedReload = debounce(() => reloadDonations(), 300);
   document.getElementById('donation-filter-q')?.addEventListener('input', debouncedReload);
-  ['donation-filter-donor', 'donation-filter-sede', 'donation-filter-category',
-    'donation-filter-status', 'donation-filter-from', 'donation-filter-to'].forEach(id => {
+  DONATION_FILTER_IDS.filter(id => id !== 'donation-filter-q').forEach(id => {
     document.getElementById(id)?.addEventListener('change', () => reloadDonations());
   });
   document.getElementById('donor-filter-q')?.addEventListener('input', debounce(() => renderDonorsTable(), 250));
@@ -67,13 +68,10 @@ function formatDonationDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
+// Igual que formatCurrencyCOP (inventory.js), pero un valor ausente se muestra como "—" y no como 0.
 function formatPesos(value) {
   if (value === null || value === undefined || value === '') return '—';
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0
-  }).format(value);
+  return formatCurrencyCOP(value);
 }
 
 function donationStatusPill(status) {
@@ -185,8 +183,7 @@ function changeDonationsPage(delta) {
 }
 
 function resetDonationFilters() {
-  ['donation-filter-q', 'donation-filter-donor', 'donation-filter-sede', 'donation-filter-category',
-    'donation-filter-status', 'donation-filter-from', 'donation-filter-to'].forEach(id => {
+  DONATION_FILTER_IDS.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -327,7 +324,7 @@ function renderDonationDetail() {
 
   content.innerHTML = `
     ${editable ? '' : `
-      <div style="padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; font-weight: 600; background: rgba(239, 68, 68, 0.12); color: #dc2626;">
+      <div class="form-error-banner">
         Donación anulada: es de solo lectura.
       </div>`}
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
@@ -742,8 +739,8 @@ function showDonorHistory(donorId) {
 }
 
 function resetDonationFiltersSilently() {
-  ['donation-filter-q', 'donation-filter-sede', 'donation-filter-category',
-    'donation-filter-status', 'donation-filter-from', 'donation-filter-to'].forEach(id => {
+  // Se conserva el filtro de donante, que el llamador acaba de fijar.
+  DONATION_FILTER_IDS.filter(id => id !== 'donation-filter-donor').forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });

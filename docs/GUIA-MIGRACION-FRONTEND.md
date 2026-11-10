@@ -770,7 +770,7 @@ Los 422 de las reglas propias traen `loc` con el nombre del campo de la API (`do
 La sección **Donaciones** de `frontend/` (`js/donaciones.js`) ya usa todas estas rutas. Es mínima a propósito, solo para mostrar el backend:
 
 - [x] Lista con filtros (desde, hasta, donante, sede, estado, categoría y texto), paginación de 20 en 20 y el total estimado de cada donación.
-- [x] Resumen del mes con `donationsThisMonth` e `itemsReceivedThisMonth` del panel.
+- [x] Resumen del mes en la pestaña de donaciones, con `donationsThisMonth` e `itemsReceivedThisMonth` de `/api/dashboard`. El panel principal no los muestra.
 - [x] Formulario para crear y editar, con ítems de categoría existente o nueva y el total calculado mientras se escribe. Los ítems convertidos se muestran bloqueados y se reenvían sin cambios.
 - [x] Detalle con los ítems, el comprobante (subir, ver y quitar), la conversión de un ítem en equipo y el botón de anular.
 - [x] Botón de exportar a Excel con los filtros activos.
