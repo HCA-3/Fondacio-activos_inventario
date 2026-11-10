@@ -13,6 +13,7 @@ from app.errores import DatoInvalido, ErrorDeNegocio
 from app.models import Rol, Usuario
 from app.routers import (
     auth,
+    categorias,
     configuracion,
     dashboard,
     donantes,
@@ -68,6 +69,7 @@ def crear_app() -> FastAPI:
         usuarios,
         sedes,
         donantes,
+        categorias,
         equipos,
         prestamos,
         mantenimientos,
