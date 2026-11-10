@@ -72,8 +72,8 @@ def test_desactivar_la_oculta_del_filtro_de_activas(cliente_admin: TestClient) -
     cambiada = cliente_admin.patch(f"/api/categorias/{categoria['id']}", json={"active": False})
 
     assert cambiada.json()["active"] is False
-    assert "Antigüedades" not in _nombres(cliente_admin, activa=True)
-    assert "Antigüedades" in _nombres(cliente_admin, activa=False)
+    assert "Antigüedades" not in _nombres(cliente_admin, active=True)
+    assert "Antigüedades" in _nombres(cliente_admin, active=False)
     assert "Antigüedades" in _nombres(cliente_admin)
 
 

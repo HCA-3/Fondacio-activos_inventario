@@ -4,6 +4,8 @@ Revisión: 0005
 Anterior: 0004
 """
 
+from uuid import uuid4
+
 import sqlalchemy as sa
 from alembic import op
 
@@ -63,7 +65,7 @@ def upgrade() -> None:
     categorias = sa.table("categorias", sa.column("id", sa.Text), sa.column("nombre", sa.Text))
     op.bulk_insert(
         categorias,
-        [{"id": f"cat-{i:02d}", "nombre": nombre} for i, nombre in enumerate(CATALOGO_INICIAL, 1)],
+        [{"id": str(uuid4()), "nombre": nombre} for nombre in CATALOGO_INICIAL],
     )
 
 

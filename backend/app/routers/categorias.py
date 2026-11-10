@@ -23,11 +23,11 @@ def _buscar(bd: BD, categoria_id: str) -> Categoria:
 
 
 @router.get("", response_model=Pagina[CategoriaSalida])
-def listar(bd: BD, _: UsuarioActual, pag: Pag, activa: bool | None = None) -> dict:
-    """Con `activa=true` solo las que se ofrecen en formularios nuevos."""
+def listar(bd: BD, _: UsuarioActual, pag: Pag, active: bool | None = None) -> dict:
+    """Con `active=true` solo las que se ofrecen en formularios nuevos."""
     consulta = select(Categoria).order_by(Categoria.nombre)
-    if activa is not None:
-        consulta = consulta.where(Categoria.activa == activa)
+    if active is not None:
+        consulta = consulta.where(Categoria.activa == active)
     return paginar(bd, consulta, pag)
 
 
