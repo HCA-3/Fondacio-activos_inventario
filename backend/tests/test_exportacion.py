@@ -111,6 +111,16 @@ def test_un_texto_que_empieza_por_igual_no_se_vuelve_formula(admin: TestClient) 
     assert celda.data_type == "s"
 
 
+def test_un_caracter_de_control_no_rompe_el_excel(admin: TestClient) -> None:
+    nuevo_equipo(admin, "PC-01", brand="Dell\x0b con salto raro\x07")
+
+    respuesta = admin.get("/api/equipos/export.xlsx")
+
+    assert respuesta.status_code == 200
+    celda = load_workbook(BytesIO(respuesta.content))["Censo General de Equipos"]["C2"]
+    assert celda.value == "Dell con salto raro"
+
+
 def test_el_archivo_se_descarga_con_nombre_y_fecha(admin: TestClient) -> None:
     cabecera = admin.get("/api/equipos/export.xlsx").headers["content-disposition"]
 
