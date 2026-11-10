@@ -292,3 +292,23 @@ def test_editar_solo_los_items_actualiza_la_fecha_de_cambio(cliente_admin: TestC
 
     despues = cliente_admin.get(f"/api/donaciones/{donacion['id']}").json()["updatedAt"]
     assert despues > antes
+
+
+def test_un_donante_inactivo_no_recibe_donaciones_nuevas(cliente_admin: TestClient) -> None:
+    donante = _preparar(cliente_admin)
+    vigente = nuevo_donante(cliente_admin, "Ana Pérez")
+    donacion = nueva_donacion(cliente_admin, donante)
+    cliente_admin.patch(f"/api/donantes/{donante['id']}", json={"active": False})
+    cuerpo = {"donorId": donante["id"], "sede": "Altos del Cabo", "items": [{"name": "Libro"}]}
+
+    al_crear = cliente_admin.post("/api/donaciones", json=cuerpo)
+    al_reasignar = cliente_admin.patch(
+        f"/api/donaciones/{nueva_donacion(cliente_admin, vigente)['id']}",
+        json={"donorId": donante["id"]},
+    )
+    # Lo ya registrado se conserva y se sigue pudiendo ver y editar.
+    vista = cliente_admin.get(f"/api/donaciones/{donacion['id']}")
+    editada = cliente_admin.patch(f"/api/donaciones/{donacion['id']}", json={"notes": "Ajuste"})
+
+    assert (al_crear.status_code, al_reasignar.status_code) == (409, 409)
+    assert (vista.status_code, editada.status_code) == (200, 200)

@@ -20,6 +20,11 @@ def _buscar_donante(bd: Session, donante_id: str) -> Donante:
     donante = bd.get(Donante, donante_id)
     if donante is None:
         raise DatoInvalido("donorId", f"No existe el donante {donante_id!r}")
+    # Solo se rechaza al elegirlo: las donaciones ya registradas se conservan.
+    if not donante.activo:
+        raise Conflicto(
+            f"El donante {donante.nombre!r} está inactivo y no puede recibir donaciones"
+        )
     return donante
 
 
