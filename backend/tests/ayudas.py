@@ -17,6 +17,10 @@ def nuevo_donante(cliente: TestClient, nombre: str = "María Pérez", **campos) 
     return crear(cliente, "/api/donantes", {"name": nombre} | campos)
 
 
+def nueva_categoria(cliente: TestClient, nombre: str = "Mesas de comedor", **campos) -> dict:
+    return crear(cliente, "/api/categorias", {"name": nombre} | campos)
+
+
 def nuevo_equipo(cliente: TestClient, placa: str = "PC-01", **campos) -> dict:
     cuerpo = {"code": placa, "sede": "Altos del Cabo", "brand": "Dell", "model": "Latitude 7480"}
     return crear(cliente, "/api/equipos", cuerpo | campos)
