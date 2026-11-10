@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import Query
 from sqlalchemy import Select, func, or_, select
 
+from app.busqueda import patron_de_busqueda
 from app.models import Equipo, EstadoEquipo, Sede
 
 # Dónde busca ?q=: las mismas columnas y campos de la ficha que revisaba el frontend.
@@ -20,11 +21,6 @@ COLUMNAS_DE_BUSQUEDA = (
 CAMPOS_DE_FICHA_DE_BUSQUEDA = ("processor", "ip", "mac", "networkHostname", "os")
 
 Filtro = Annotated[str | None, Query(max_length=100)]
-
-
-def _patron(texto: str) -> str:
-    seguro = texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    return f"%{seguro}%"
 
 
 class FiltrosDeEquipos:
@@ -57,7 +53,7 @@ class FiltrosDeEquipos:
         if self.tipo:
             consulta = consulta.where(func.lower(Equipo.tipo_equipo) == self.tipo.lower())
         if self.q:
-            patron = _patron(self.q)
+            patron = patron_de_busqueda(self.q)
             consulta = consulta.where(
                 or_(
                     *(columna.ilike(patron, escape="\\") for columna in COLUMNAS_DE_BUSQUEDA),
