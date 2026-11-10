@@ -464,7 +464,7 @@ function initBackupModule() {
 
 async function renderSettingsView() {
   try {
-    const user = DB.currentUser;
+    const user = DB.getCurrentUser();
     const settingsUserEl = document.getElementById('settings-user-display');
     if (user && settingsUserEl) {
       settingsUserEl.textContent = `${user.username} (${user.role === 'admin' ? 'Administrador' : 'Consulta'})`;
@@ -577,7 +577,7 @@ async function renderUsersTable() {
     }
 
     tbody.innerHTML = users.map(u => {
-      const isCurrent = DB.currentUser && DB.currentUser.username === u.username;
+      const isCurrent = DB.getCurrentUser() && DB.getCurrentUser().username === u.username;
       const isAdminUser = u.username === 'admin';
       const roleBadge = u.role === 'admin'
         ? '<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #2563eb; font-weight: 700; padding: 2px 8px; border-radius: 999px;">Administrador</span>'
